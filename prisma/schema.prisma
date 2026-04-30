@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String   @id
+  email       String   @unique
+  username    String
+  password    String
+  is_verified Boolean  @default(false)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  sessions Session[]
+}
+
+model Session {
+  id         String   @id
+  token      String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user_id    String
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model OtpVerification {
+  id         String   @id
+  identifier String
+  otpCode    String
+  type       OtpType
+  expiresAt  DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
+enum OtpType {
+  sign_in
+  email_verification
+  password_reset
+}
