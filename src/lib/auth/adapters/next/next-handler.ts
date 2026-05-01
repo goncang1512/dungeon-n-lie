@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { auth as AuthType } from "../../server";
-import { $Enums } from "@repo/db";
+import { $Enums } from "@/generated/prisma/client";
 
 type Action =
   | "signin"
@@ -74,13 +74,6 @@ export const nextHandler = async (
 
       const res = NextResponse.json({ user });
 
-      // res.cookies.set("token", token, {
-      //   httpOnly: true,
-      //   secure: true,
-      //   sameSite: "strict",
-      //   path: "/",
-      // });
-
       return res;
     }
 
@@ -119,19 +112,19 @@ export const nextHandler = async (
       return res;
     }
 
-    if (action === "createotp") {
-      const body = (await req.json()) as {
-        email: string;
-        type: $Enums.OtpType;
-      };
+    // if (action === "createotp") {
+    //   const body = (await req.json()) as {
+    //     email: string;
+    //     type: $Enums.OtpType;
+    //   };
 
-      const res = await auth.api.verifyEmailOTP({
-        email: body.email,
-        type: body.type,
-      });
+    //   const res = await auth.api.verifyEmailOTP({
+    //     email: body.email,
+    //     type: body.type,
+    //   });
 
-      return NextResponse.json({ data: res });
-    }
+    //   return NextResponse.json({ data: res });
+    // }
 
     if (action === "checkotp") {
       const body = (await req.json()) as {
@@ -154,6 +147,7 @@ export const nextHandler = async (
     }
 
     return NextResponse.json({ message: "Unhandled action" }, { status: 400 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     const isAuthError =
       error.message === "User not found" ||

@@ -6,7 +6,7 @@ import { ApiResponse, SessionType } from "./types";
 import { prisma } from "../prisma";
 import { $Enums } from "@/generated/prisma/client";
 
-const JWT_SECRET = process.env.MYSUPLAI_SECRET_KEY!;
+const JWT_SECRET = process.env.NEXT_PUBLIC_MYSUPLAI_SECRET_KEY!;
 
 export const api = {
   signUp: async ({
@@ -118,11 +118,11 @@ export const api = {
 
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
 
-    const session = await prisma.session.findUnique({
+    const sessionData = await prisma.session.findUnique({
       where: { token },
     });
 
-    if (!session)
+    if (!sessionData)
       return {
         status: false,
         status_code: 403,
@@ -139,8 +139,7 @@ export const api = {
         created_at: true,
         updated_at: true,
         is_verified: true,
-        role: true,
-        Session: {
+        sessions: {
           orderBy: {
             created_at: "desc",
           },
@@ -152,7 +151,7 @@ export const api = {
       throw new Error("User not found");
     }
 
-    const { Session, ...user } = userData;
+    const { sessions, ...user } = userData;
 
     return {
       status: true,
@@ -160,7 +159,7 @@ export const api = {
       message: "Success get credentials",
       result: {
         user,
-        session: Session[0],
+        session: sessions[0],
       },
     };
   },

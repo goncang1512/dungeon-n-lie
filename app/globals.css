@@ -141,3 +141,43 @@ body {
     @apply font-sans;
   }
 }
+
+@layer components {
+  .dungeon-input {
+    @apply w-full bg-[#0e0a04] border border-[#8a6030] rounded-sm text-[#d4a04a] text-[15px] pl-9 pr-3 py-2.5 outline-none transition-all duration-200 placeholder:text-[#4a3018] placeholder:italic placeholder:text-[13px];
+  }
+
+  .dungeon-input:focus {
+    @apply border-[#a07828];
+    box-shadow:
+      0 0 0 1px rgba(224, 168, 58, 0.12),
+      inset 0 0 12px rgba(224, 168, 58, 0.04);
+  }
+  .dungeon-input:hover:not(:focus) {
+    @apply border-[#5a3d18];
+  }
+
+  .dungeon-btn {
+    @apply relative w-full overflow-hidden border rounded-xs text-[10px] tracking-[3px] uppercase py-3 cursor-pointer transition-all duration-300;
+  }
+
+  .dungeon-card {
+    @apply relative bg-[#1C1407]/90 backdrop-blur-md border border-[#5A3F1C] rounded-xs;
+    box-shadow:
+      0 8px 40px rgba(0, 0, 0, 0.7),
+      0 2px 8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(224, 168, 58, 0.1);
+  }
+}
+
+@layer utilities {
+  .text-gold-glow {
+    text-shadow:
+      0 0 30px rgba(224, 168, 58, 0.6),
+      0 0 60px rgba(224, 168, 58, 0.25);
+  }
+  .gold-underline {
+    background: linear-gradient(to right, transparent, #e0a83a, transparent);
+    height: 1px;
+  }
+}

@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/axios.ts
-import { $Enums } from "@repo/db";
 import axios from "axios";
 import { createUseSession } from "./adapters/next/hooks/useSession";
+import { $Enums } from "@/generated/prisma/client";
 
 export const api = axios.create({
-  baseURL: "/api",
+  baseURL: "http://localhost:3000/api",
   withCredentials: true, // penting buat cookie (token)
 });
 

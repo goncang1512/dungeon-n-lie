@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/rules-of-hooks */
 // hooks/useSession.ts
 "use client";
 
 import { useEffect, useState } from "react";
 import { api } from "../../../client";
-import { Prisma } from "@repo/db";
+import { Prisma } from "@/generated/prisma/client";
 
 type SessionType = {
   session: Prisma.SessionGetPayload<{

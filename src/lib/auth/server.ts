@@ -1,54 +1,53 @@
-import { $Enums, prisma } from "@repo/db";
+import { $Enums } from "@/generated/prisma/client";
 import { api } from "./api";
-import { sendEmail } from "@repo/mail";
-import { renderVerificationHTML } from "@repo/mail/template";
+import { prisma } from "../prisma";
 
 export const auth = {
   api: {
     ...api,
-    verifyEmailOTP: async ({
-      email,
-      type,
-    }: {
-      email: string;
-      type: $Enums.OtpType;
-    }) => {
-      return await api.emailOTP({
-        email,
-        type,
-        sendVerificationOTP: async ({ email, otp, type }) => {
-          if (type === "sign_in") {
-            await sendEmail({
-              to: email,
-              subject: "Email Verification",
-              html: await renderVerificationHTML({
-                userName: email,
-                verificationCode: otp,
-              }),
-            });
-          } else if (type === "email_verification") {
-            const user = await prisma.user.findFirst({
-              where: {
-                email,
-              },
-              select: {
-                username: true,
-              },
-            });
-            await sendEmail({
-              to: email,
-              subject: "Email Verification",
-              html: await renderVerificationHTML({
-                userName: user?.username,
-                verificationCode: otp,
-              }),
-            });
-          } else {
-            console.log("Reset Password OTP:", { otp, email });
-          }
-        },
-      });
-    },
+    // verifyEmailOTP: async ({
+    //   email,
+    //   type,
+    // }: {
+    //   email: string;
+    //   type: $Enums.OtpType;
+    // }) => {
+    //   return await api.emailOTP({
+    //     email,
+    //     type,
+    //     sendVerificationOTP: async ({ email, otp, type }) => {
+    //       if (type === "sign_in") {
+    //         await sendEmail({
+    //           to: email,
+    //           subject: "Email Verification",
+    //           html: await renderVerificationHTML({
+    //             userName: email,
+    //             verificationCode: otp,
+    //           }),
+    //         });
+    //       } else if (type === "email_verification") {
+    //         const user = await prisma.user.findFirst({
+    //           where: {
+    //             email,
+    //           },
+    //           select: {
+    //             username: true,
+    //           },
+    //         });
+    //         await sendEmail({
+    //           to: email,
+    //           subject: "Email Verification",
+    //           html: await renderVerificationHTML({
+    //             userName: user?.username,
+    //             verificationCode: otp,
+    //           }),
+    //         });
+    //       } else {
+    //         console.log("Reset Password OTP:", { otp, email });
+    //       }
+    //     },
+    //   });
+    // },
 
     checkVerificationOtp: async ({
       email,

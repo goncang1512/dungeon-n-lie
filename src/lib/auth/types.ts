@@ -1,4 +1,4 @@
-import { Prisma } from "@repo/db";
+import { Prisma } from "@/generated/prisma/client";
 
 export type UserType = Prisma.UserGetPayload<{
   select: {
@@ -8,7 +8,6 @@ export type UserType = Prisma.UserGetPayload<{
     created_at: true;
     updated_at: true;
     is_verified: true;
-    role: true;
   };
 }>;
 
