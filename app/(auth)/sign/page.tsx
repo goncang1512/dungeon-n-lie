@@ -79,9 +79,9 @@ const AuthContent = () => {
           className="animate-fade-up w-full flex justify-center"
         >
           {searchParams.get("page") === "signin" ? (
-            <SignInPage onSwitch={() => router.push("?page=signup")} />
+            <SignUpPage onSwitch={() => router.push("?page=signup")} />
           ) : (
-            <SignUpPage onSwitch={() => router.push("?page=signin")} />
+            <SignInPage onSwitch={() => router.push("?page=signin")} />
           )}
         </div>
 

@@ -39,7 +39,7 @@ export const createUseSession = () => {
     try {
       setLoading(true);
       const res = await api.get("/auth/session");
-      setData(res.data?.data ?? null);
+      setData(res.data?.data.result ?? null);
     } catch (err: any) {
       if (err.response?.status === 401) {
         setData(null);
