@@ -5,7 +5,7 @@ import { createUseSession } from "./adapters/next/hooks/useSession";
 import { $Enums } from "@/generated/prisma/client";
 
 export const api = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL: `${process.env.NEXT_PUBLIC_URL_BASE}/api`,
   withCredentials: true, // penting buat cookie (token)
 });
 
