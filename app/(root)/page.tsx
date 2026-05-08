@@ -8,6 +8,7 @@ import { matchStore } from "@/src/store/room.store";
 import { useShallow } from "zustand/shallow";
 import { authClient } from "@/src/lib/auth/client";
 import { useRouter } from "next/navigation";
+import CharacterSelect from "@/src/components/layouts/home-page/character-select";
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function HomePage() {
@@ -52,6 +53,8 @@ export default function HomePage() {
       audio.playAmbient();
     });
   }, []);
+
+  console.log(data);
 
   return (
     <div
@@ -186,6 +189,14 @@ export default function HomePage() {
           >
             {audioReady ? "♪ SOUND ON" : "CLICK TO ENABLE SOUND"}
           </p>
+        </div>
+
+        <div className="absolute right-10 top-1/2 -translate-y-1/2 z-20">
+          <div className="w-125 h-screen">
+            <CharacterSelect
+              selectedClass={data?.user.character ?? "barbarian"}
+            />
+          </div>
         </div>
       </div>
 

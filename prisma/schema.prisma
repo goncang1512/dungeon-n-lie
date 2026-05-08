@@ -21,11 +21,21 @@ model User {
   is_active   Boolean  @default(true)
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
+  character   CharUser @default(barbarian)
 
   sessions   Session[]
   matchUsers MatchUser[]
 
   matches Match[]
+}
+
+enum CharUser {
+  barbarian
+  wizard
+  paladin
+  cleric
+  bard
+  warlock
 }
 
 model Session {
@@ -59,14 +69,22 @@ enum OtpType {
 }
 
 model Match {
-  id         String   @id @default(cuid())
-  room_id    String   @unique
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id         String      @id @default(cuid())
+  room_id    String      @unique
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
   user_id    String
+  status     MatchStatus @default(waiting)
 
   user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   matchUsers MatchUser[]
+}
+
+enum MatchStatus {
+  waiting
+  ready
+  finish
+  playing
 }
 
 model MatchUser {

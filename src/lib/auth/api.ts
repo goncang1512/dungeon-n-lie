@@ -2,7 +2,7 @@ import * as jwt from "jsonwebtoken";
 import * as bcrypt from "bcrypt";
 import { randomInt } from "crypto";
 import { generateId } from "./lib/generate-id";
-import { ApiResponse, SessionType } from "./types";
+import { ApiResponse, SessionType, user_session_select } from "./types";
 import { prisma } from "../prisma";
 import { $Enums } from "@/generated/prisma/client";
 
@@ -133,12 +133,7 @@ export const api = {
     const userData = await prisma.user.findUnique({
       where: { id: decoded.id },
       select: {
-        id: true,
-        username: true,
-        email: true,
-        created_at: true,
-        updated_at: true,
-        is_verified: true,
+        ...user_session_select,
         sessions: {
           orderBy: {
             created_at: "desc",

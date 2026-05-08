@@ -53,11 +53,10 @@ export default function MenuItems({
     },
     {
       id: "settings",
-      label: "THE CRYPT",
-      sub: "SETTINGS · PROFILE · RELICS",
+      label: "CHARACTER",
+      sub: "PROFILE · RELICS",
       action: () => {
-        audio.resume();
-        audio.playClick();
+        router.push("/character");
       },
       loading: false,
     },

@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../../client";
 import { Prisma } from "@/generated/prisma/client";
+import { user_session_select } from "../../../types";
 
 type SessionType = {
   session: Prisma.SessionGetPayload<{
@@ -18,15 +19,7 @@ type SessionType = {
     };
   }>;
   user: Prisma.UserGetPayload<{
-    select: {
-      id: true;
-      username: true;
-      email: true;
-      is_verified: true;
-      updated_at: true;
-      created_at: true;
-      role: true;
-    };
+    select: typeof user_session_select;
   }>;
 };
 
