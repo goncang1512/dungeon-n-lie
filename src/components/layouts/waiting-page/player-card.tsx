@@ -20,17 +20,27 @@ export function PlayerCard({ player }: { player: PlayerMatch | null }) {
       </div>
     );
   }
+
   const colors: Record<status_player, string> = {
     ready: "#40cc60",
     waiting: "#a07828",
     host: "#c8882a",
   };
+
   const labels: Record<status_player, string> = {
     ready: "READY",
     waiting: "WAITING",
     host: "HOST",
   };
+
+  // Untuk warna & animasi avatar — host yang ready tetap tampil efek ready
+  const avatarStatus: status_player = player.ready ? "ready" : player.status;
+
+  // Badge tetap pakai status asli — host selalu "HOST"
+  const badgeStatus: status_player = player.status;
+
   const initials = player.user.username.slice(0, 2).toUpperCase();
+
   return (
     <div
       className="relative rounded-sm flex flex-col items-center justify-center gap-2 min-h-30 p-4 transition-all duration-300"
@@ -43,7 +53,9 @@ export function PlayerCard({ player }: { player: PlayerMatch | null }) {
       }}
     >
       <Corners color={player.isYou ? "#c8882a" : "#3a2810"} size="w-2 h-2" />
-      {player.status === "host" && (
+
+      {/* Host indicator bar */}
+      {badgeStatus === "host" && (
         <div
           className="absolute -top-px left-4 w-10 h-0.5"
           style={{
@@ -52,23 +64,27 @@ export function PlayerCard({ player }: { player: PlayerMatch | null }) {
           }}
         />
       )}
+
+      {/* Avatar */}
       <div
         className="relative w-12 h-12 rounded-full flex items-center justify-center font-cinzel font-bold text-[14px]"
         style={{
-          background: `${colors[player.status]}18`,
-          border: `1px solid ${colors[player.status]}`,
-          color: colors[player.status],
-          boxShadow: `0 0 10px ${colors[player.status]}44`,
+          background: `${colors[avatarStatus]}18`,
+          border: `1px solid ${colors[avatarStatus]}`,
+          color: colors[avatarStatus],
+          boxShadow: `0 0 10px ${colors[avatarStatus]}44`,
         }}
       >
         {initials}
-        {player.status === "ready" && (
+        {avatarStatus === "ready" && (
           <span
             className="absolute inset-0 rounded-full animate-ping"
             style={{ border: `1px solid ${colors.ready}`, opacity: 0.35 }}
           />
         )}
       </div>
+
+      {/* Username */}
       <p
         className="font-cinzel text-[9px] tracking-[1.5px] text-center truncate w-full"
         style={{ color: player.isYou ? "#e0a83a" : "#9a7030" }}
@@ -80,18 +96,20 @@ export function PlayerCard({ player }: { player: PlayerMatch | null }) {
           </span>
         )}
       </p>
+
+      {/* Status badge */}
       <div
         className="px-2 py-0.5 rounded-sm"
         style={{
-          background: `${colors[player.status]}15`,
-          border: `1px solid ${colors[player.status]}55`,
+          background: `${colors[badgeStatus]}15`,
+          border: `1px solid ${colors[badgeStatus]}55`,
         }}
       >
         <p
           className="font-cinzel text-[7px] tracking-[2px]"
-          style={{ color: colors[player.status] }}
+          style={{ color: colors[badgeStatus] }}
         >
-          {labels[player.status]}
+          {labels[badgeStatus]}
         </p>
       </div>
     </div>

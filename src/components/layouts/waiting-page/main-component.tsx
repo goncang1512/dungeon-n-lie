@@ -11,6 +11,7 @@ import {
   handleHostChanged,
   handleUserJoined,
   handleUserOut,
+  handleUserReady,
   pusherClientMatch,
 } from "@/src/lib/pusher/match.pusher";
 
@@ -26,14 +27,15 @@ export default function MainComponentWaiting({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useScene(canvasRef);
 
-  const { setValue } = useChatStore(
+  const { setValue, players: onPlayers } = useChatStore(
     useShallow((state) => ({
       setValue: state.setValue,
+      players: state.players,
     })),
   );
 
-  const readyCount = players.filter((p) => p?.status === "ready").length;
-  const totalFilled = players.filter(Boolean).length;
+  const readyCount = onPlayers.filter((p) => p?.status === "ready").length;
+  const totalFilled = onPlayers.filter(Boolean).length;
 
   useEffect(() => {
     setValue("players", players);
@@ -52,15 +54,19 @@ export default function MainComponentWaiting({
       handleUserOut(data, setValue);
     const onHostChanged = (data: { user_id: string }) =>
       handleHostChanged(data, setValue);
+    const onUserReady = (data: { userId: string; ready: boolean }) =>
+      handleUserReady(data, setValue);
 
     channel.bind("user-joined", onUserJoined);
     channel.bind("user-out", onUserOut);
     channel.bind("host-changed", onHostChanged);
+    channel.bind("user-ready", onUserReady);
 
     return () => {
       channel.unbind("user-joined", onUserJoined);
       channel.unbind("user-out", onUserOut);
       channel.unbind("host-changed", onHostChanged);
+      channel.unbind("user-ready", onUserReady);
       pusherClientMatch.unsubscribe(channelName);
     };
   }, [roomId]);

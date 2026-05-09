@@ -149,3 +149,35 @@ export const outMatch = async (match_id: string, user_id: string) => {
 
   return result;
 };
+
+export const readyMatch = async (
+  match_id: string,
+  user_id: string,
+  ready: boolean,
+) => {
+  const result = await prisma.matchUser.update({
+    where: {
+      userId_matchId: {
+        matchId: match_id,
+        userId: user_id,
+      },
+    },
+    data: {
+      ready,
+    },
+    select: {
+      match: {
+        select: {
+          room_id: true,
+        },
+      },
+    },
+  });
+
+  await pusher.trigger(`match-${result.match.room_id}`, "user-ready", {
+    userId: user_id,
+    ready,
+  });
+
+  return result;
+};

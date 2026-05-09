@@ -67,3 +67,19 @@ export const handleHostChanged = (
 
   setValue("players", updatedPlayers);
 };
+
+export const handleUserReady = (
+  data: { userId: string; ready: boolean },
+  setValue: ChatStoreType["setValue"],
+) => {
+  const currentPlayers = useChatStore.getState().players;
+
+  const updatedPlayers = currentPlayers.map((player) => {
+    if (player.userId === data.userId) {
+      return { ...player, ready: data.ready };
+    }
+    return player;
+  });
+
+  setValue("players", updatedPlayers);
+};
