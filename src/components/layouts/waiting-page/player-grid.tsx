@@ -29,6 +29,13 @@ export default function PlayerGrid({ match_id }: { match_id: string }) {
     return on_ready?.ready ?? false;
   }, [players, data?.user]);
 
+  const isHost = useMemo(() => {
+    const res = players.find((item) => item.userId === data?.user.id);
+    const hasil = res?.status === "host" && isReadyMatch;
+
+    return hasil;
+  }, [players, data?.user, isReadyMatch]);
+
   const toggleReady = () => {
     const newReady = !isReadyMatch;
 
@@ -90,24 +97,26 @@ export default function PlayerGrid({ match_id }: { match_id: string }) {
           />
           {isReadyMatch ? "✦ BOUND TO THE VOID" : "⚔ SWEAR THE OATH"}
         </button>
-        <button
-          className="flex-1 font-cinzel text-[9px] tracking-[2px] py-3 rounded-sm transition-all duration-200 cursor-pointer"
-          style={{
-            background: "transparent",
-            border: "1px solid #3a2810",
-            color: "#5a3d18",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#8b2222";
-            e.currentTarget.style.color = "#8b2222";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "#3a2810";
-            e.currentTarget.style.color = "#5a3d18";
-          }}
-        >
-          FLEE
-        </button>
+        {isHost && (
+          <button
+            className="flex-1 font-cinzel text-[9px] tracking-[2px] py-3 rounded-sm transition-all duration-200 cursor-pointer"
+            style={{
+              background: "transparent",
+              border: "1px solid #3a2810",
+              color: "#5a3d18",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "#8b2222";
+              e.currentTarget.style.color = "#8b2222";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "#3a2810";
+              e.currentTarget.style.color = "#5a3d18";
+            }}
+          >
+            MATCH
+          </button>
+        )}
         <button
           onClick={() => outMatch(match_id, data?.user.id ?? "", router)}
           className="flex-1 font-cinzel text-[9px] tracking-[2px] py-3 rounded-sm transition-all duration-200 cursor-pointer flex items-center justify-center gap-3"

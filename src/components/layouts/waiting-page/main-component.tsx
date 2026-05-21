@@ -118,7 +118,7 @@ export default function MainComponentWaiting({
           {/* Right panel */}
           <div className="w-full lg:w-72 flex flex-col gap-3">
             {/* Chat */}
-            <ChatSection />
+            <ChatSection roomId={roomId} />
           </div>
         </div>
 

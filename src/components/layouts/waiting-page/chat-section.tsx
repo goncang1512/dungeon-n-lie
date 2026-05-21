@@ -1,7 +1,17 @@
-import React, { useCallback, useRef, useEffect, useMemo } from "react";
+import React, {
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+  startTransition,
+} from "react";
 import { Corners } from "./player-card";
 import { useChatStore } from "@/src/store/chat.store";
 import { useShallow } from "zustand/shallow";
+import { pusherClientMatch } from "@/src/lib/pusher/match.pusher";
+import { handleNewChat } from "@/src/lib/pusher/message.pusher";
+import { authClient } from "@/src/lib/auth/client";
+import { sendMessage } from "@/src/actions/message.action";
 
 interface ChatMessage {
   sender: string;
@@ -27,9 +37,10 @@ const COLORS = {
 const MAX_MESSAGE_LENGTH = 120;
 const CURRENT_USER = "You";
 
-export default function ChatSection() {
+export default function ChatSection({ roomId }: { roomId: string }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { data } = authClient.useSession();
 
   const { message, messages, setValue } = useChatStore(
     useShallow((state) => ({
@@ -47,28 +58,29 @@ export default function ChatSection() {
   // Validasi: cek apakah pesan kosong atau hanya whitespace
   const isMessageValid = useMemo(() => message.trim().length > 0, [message]);
 
-  const sendMessage = useCallback(() => {
-    const text = message.trim();
-    if (!text) return;
-
-    const newMessage: ChatMessage = {
-      sender: CURRENT_USER,
-      text,
-      isSystem: false,
-    };
-
-    setValue("messages", [...messages, newMessage]);
-    setValue("message", "");
-  }, [message, messages, setValue]);
-
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        sendMessage();
+
+        // Snapshot nilai ke variabel lokal dulu
+        const currentRoomId = roomId;
+        const currentMessage = message;
+        const currentSender = data?.user.username ?? "";
+
+        startTransition(async () => {
+          await sendMessage({
+            isSystem: false,
+            room_id: currentRoomId, // pakai snapshot, bukan referensi langsung
+            sender: currentSender,
+            text: currentMessage,
+          });
+
+          setValue("message", "");
+        });
       }
     },
-    [sendMessage],
+    [sendMessage, roomId, message, data, setValue], // tambahkan dependencies yang hilang
   );
 
   const handleInputChange = useCallback(
@@ -93,6 +105,26 @@ export default function ChatSection() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    const channelName = `match-${roomId}`;
+    const channel = pusherClientMatch.subscribe(channelName);
+
+    const onUserJoined = (data: {
+      sender: string;
+      text: string;
+      isSystem: boolean;
+    }) => handleNewChat(data, setValue);
+
+    channel.bind("message-room", onUserJoined);
+
+    return () => {
+      channel.unbind("message-room", onUserJoined);
+      pusherClientMatch.unsubscribe(channelName);
+    };
+  }, [roomId]);
 
   return (
     <div
@@ -196,7 +228,8 @@ interface ChatInputProps {
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
-  onSend: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSend: (body: any) => void;
   isValid: boolean;
 }
 

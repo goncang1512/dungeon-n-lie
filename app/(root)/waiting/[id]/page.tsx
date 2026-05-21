@@ -34,9 +34,7 @@ export default async function WaitingRoomPage({
 
       if (item.userId === match.user_id) {
         status = "host";
-      }
-
-      if (item.ready) {
+      } else if (item.ready) {
         status = "ready";
       }
 
