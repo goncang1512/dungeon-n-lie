@@ -21,6 +21,7 @@ export type ChatStoreType = {
   }[];
   isReady: boolean;
   players: PlayerMatch[];
+  loading: boolean;
 };
 
 export const useChatStore = create<ChatStoreType>((set) => ({
@@ -29,4 +30,5 @@ export const useChatStore = create<ChatStoreType>((set) => ({
   isReady: false,
   players: [],
   setValue: (key, value) => set(() => ({ [key]: value })),
+  loading: false,
 }));

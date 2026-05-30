@@ -3,11 +3,17 @@ import { Corners, PlayerCard } from "./player-card";
 import { useChatStore } from "@/src/store/chat.store";
 import { matchStore } from "@/src/store/room.store";
 import { useShallow } from "zustand/shallow";
-import { useRouter } from "next/navigation";
-import { startTransition, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { startTransition, useEffect, useMemo } from "react";
 import { readyMatch } from "@/src/actions/match.action";
+import { pusherClientMatch } from "@/src/lib/pusher/match.pusher";
+import { handleStartGame } from "@/src/lib/pusher/message.pusher";
+import { startGame } from "@/src/actions/message.action";
+import { Loader2 } from "lucide-react";
 
 export default function PlayerGrid({ match_id }: { match_id: string }) {
+  const params = useParams();
+  const { data: sessionData } = authClient.useSession();
   const router = useRouter();
   const { data } = authClient.useSession();
   const { outMatch, loading } = matchStore(
@@ -53,6 +59,32 @@ export default function PlayerGrid({ match_id }: { match_id: string }) {
     });
   };
 
+  useEffect(() => {
+    if (!params.id || !sessionData?.user) return;
+
+    const channelName = `match-${params.id}`;
+    const channel = pusherClientMatch.subscribe(channelName);
+
+    const onStartGame = (data: { room_id: string; users: string[] }) => {
+      const res = handleStartGame({
+        data: data,
+        room_id: String(params.id),
+        session: sessionData,
+      });
+
+      if (res) {
+        router.push(`/game/${data.room_id}/role`);
+      }
+    };
+
+    channel.bind("start-game", onStartGame);
+
+    return () => {
+      channel.unbind("start-game", onStartGame);
+      pusherClientMatch.unsubscribe(channelName);
+    };
+  }, [params.id, sessionData]);
+
   return (
     <div className="flex-1">
       <p
@@ -97,26 +129,7 @@ export default function PlayerGrid({ match_id }: { match_id: string }) {
           />
           {isReadyMatch ? "✦ BOUND TO THE VOID" : "⚔ SWEAR THE OATH"}
         </button>
-        {isHost && (
-          <button
-            className="flex-1 font-cinzel text-[9px] tracking-[2px] py-3 rounded-sm transition-all duration-200 cursor-pointer"
-            style={{
-              background: "transparent",
-              border: "1px solid #3a2810",
-              color: "#5a3d18",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#8b2222";
-              e.currentTarget.style.color = "#8b2222";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#3a2810";
-              e.currentTarget.style.color = "#5a3d18";
-            }}
-          >
-            MATCH
-          </button>
-        )}
+        {isHost && <ButtonStart />}
         <button
           onClick={() => outMatch(match_id, data?.user.id ?? "", router)}
           className="flex-1 font-cinzel text-[9px] tracking-[2px] py-3 rounded-sm transition-all duration-200 cursor-pointer flex items-center justify-center gap-3"
@@ -146,3 +159,42 @@ export default function PlayerGrid({ match_id }: { match_id: string }) {
     </div>
   );
 }
+
+const ButtonStart = () => {
+  const { loading, setValue } = useChatStore(
+    useShallow((state) => ({
+      loading: state.loading,
+      setValue: state.setValue,
+    })),
+  );
+  const params = useParams();
+  const mulaiGame = () => {
+    startTransition(async () => {
+      setValue("loading", true);
+      await startGame({ room_id: String(params.id) });
+      setValue("loading", false);
+    });
+  };
+
+  return (
+    <button
+      onClick={mulaiGame}
+      className="flex-1 font-cinzel text-[9px] tracking-[2px] py-3 rounded-sm transition-all duration-200 cursor-pointer flex justify-center items-center"
+      style={{
+        background: "transparent",
+        border: "1px solid #3a2810",
+        color: "#5a3d18",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = "#8b2222";
+        e.currentTarget.style.color = "#8b2222";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "#3a2810";
+        e.currentTarget.style.color = "#5a3d18";
+      }}
+    >
+      {loading ? <Loader2 className="animate-spin" /> : "START"}
+    </button>
+  );
+};

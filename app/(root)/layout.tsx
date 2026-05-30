@@ -30,7 +30,7 @@ export default async function RootLayout({
   const match = await prisma.match.findFirst({
     where: {
       status: {
-        in: ["waiting", "playing"],
+        in: ["waiting", "playing", "rolling"],
       },
       matchUsers: {
         some: {
@@ -43,6 +43,10 @@ export default async function RootLayout({
   if (match) {
     if (match.status === "waiting") {
       return redirect(`/waiting/${match.room_id}`);
+    }
+
+    if (match.status === "rolling") {
+      return redirect(`/game/${match.room_id}/role`);
     }
 
     if (match.status === "playing") {

@@ -69,12 +69,13 @@ enum OtpType {
 }
 
 model Match {
-  id         String      @id @default(cuid())
-  room_id    String      @unique
-  created_at DateTime    @default(now())
-  updated_at DateTime    @updatedAt
-  user_id    String
-  status     MatchStatus @default(waiting)
+  id           String      @id @default(cuid())
+  room_id      String      @unique
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @updatedAt
+  user_id      String
+  status       MatchStatus @default(waiting)
+  roleAssigned Boolean     @default(false)
 
   user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   matchUsers MatchUser[]
@@ -85,13 +86,15 @@ enum MatchStatus {
   ready
   finish
   playing
+  rolling
 }
 
 model MatchUser {
-  id      String  @id @default(cuid())
+  id      String   @id @default(cuid())
   userId  String
   matchId String
-  ready   Boolean @default(false)
+  ready   Boolean  @default(false)
+  role    UserRole @default(survivor)
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
@@ -100,4 +103,13 @@ model MatchUser {
   updated_at DateTime @updatedAt
 
   @@unique([userId, matchId])
+}
+
+enum UserRole {
+  survivor
+  observer
+  guardian
+  analyst
+  infiltrator
+  catalyst
 }
