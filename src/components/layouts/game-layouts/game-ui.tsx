@@ -1,18 +1,58 @@
 "use client";
+
+import { useCallStateHooks } from "@stream-io/video-react-sdk";
+import "@stream-io/video-react-sdk/dist/css/styles.css";
+
 import { DungeonBackground } from "@/src/components/layouts/game-layouts/background-game";
 import { ClueRow, CLUES } from "@/src/components/layouts/game-layouts/clue-row";
-import {
-  PlayerCard,
-  PLAYERS,
-} from "@/src/components/layouts/game-layouts/player-card";
 import { useState, useEffect, JSX } from "react";
+import { VideoTile } from "./stream/vidio-tile";
+import { CallControls } from "./stream/call-controls";
+import { Action, ACTIONS, NARRATIVE, ROLE_META, UserRole } from "./init-game";
 
-const NARRATIVE = `"The torches dim. Somewhere in the corridor, a door was left open that should have been sealed. Someone moved when the lights went out."`;
-const ACTIONS = ["INVESTIGATE", "PROTECT", "ACCUSE", "WAIT"] as const;
-type Action = (typeof ACTIONS)[number];
+function EmptySlot({ slotIndex }: { slotIndex: number }): JSX.Element {
+  return (
+    <div
+      className="relative flex flex-col overflow-hidden"
+      style={{
+        background: "rgba(8,5,3,0.4)",
+        border: "1px solid rgba(41,37,36,0.35)",
+      }}
+    >
+      <div
+        className="w-full flex items-center justify-center"
+        style={{ aspectRatio: "4/3" }}
+      >
+        <span
+          className="text-[9px] tracking-widest"
+          style={{ fontFamily: "monospace", color: "rgba(87,83,78,0.38)" }}
+        >
+          AWAITING
+        </span>
+      </div>
+      <div className="px-2 py-1" style={{ background: "rgba(4,3,2,0.88)" }}>
+        <span
+          className="text-[10px] tracking-widest"
+          style={{ fontFamily: "monospace", color: "rgba(87,83,78,0.3)" }}
+        >
+          #{String(slotIndex + 1).padStart(2, "0")} — EMPTY
+        </span>
+      </div>
+    </div>
+  );
+}
 
-export default function GamePage(): JSX.Element {
-  const [timeLeft, setTimeLeft] = useState<number>(60);
+export function GameUI({
+  userId,
+  role,
+}: {
+  userId: string;
+  role: UserRole;
+}): JSX.Element {
+  const { useParticipants } = useCallStateHooks();
+  const participants = useParticipants();
+
+  const [timeLeft, setTimeLeft] = useState<number>(300);
   const [round] = useState<number>(2);
   const [activeAction, setActiveAction] = useState<Action | null>(null);
   const [systemMsg, setSystemMsg] = useState<string>(
@@ -45,33 +85,50 @@ export default function GamePage(): JSX.Element {
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const urgency =
-    timeLeft < 120
+    timeLeft < 60
       ? "text-red-400"
-      : timeLeft < 240
+      : timeLeft < 120
         ? "text-amber-400"
         : "text-stone-300";
-  const left = PLAYERS.filter((p) => p.position.endsWith("left"));
-  const right = PLAYERS.filter((p) => p.position.endsWith("right"));
+
+  // FIX: Render slot berdasarkan participants array + empty slot untuk sisa.
+  // Sebelumnya participants[idx] langsung diakses by index — kalau participant
+  // join belakangan, urutan array bisa tidak sesuai index slot yang diharapkan.
+  const renderSlots = (startIdx: number, count: number) => {
+    return Array.from({ length: count }, (_, i) => {
+      const slotIdx = startIdx + i;
+      const p = participants[slotIdx];
+      if (!p) return <EmptySlot key={`e-${slotIdx}`} slotIndex={slotIdx} />;
+      const isSelf = p.userId === userId;
+      return (
+        <VideoTile
+          key={p.sessionId}
+          participant={p}
+          slotIndex={slotIdx}
+          isSelf={isSelf}
+          selfRole={isSelf ? role : undefined}
+        />
+      );
+    });
+  };
+
+  const roleMeta = ROLE_META[role];
 
   return (
     <div
       className="relative w-full h-screen overflow-hidden font-mono"
       style={{ background: "#080503" }}
     >
-      {/* ① Three.js canvas — z:0 */}
       <DungeonBackground />
 
-      {/* ② Deep vignette — heavy corners, transparent center */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           zIndex: 1,
           background:
-            "radial-gradient(ellipse 70% 65% at 50% 45%, transparent 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0.80) 100%)",
+            "radial-gradient(ellipse 70% 65% at 50% 45%, transparent 0%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.80) 100%)",
         }}
       />
-
-      {/* ③ Top & bottom gradient bars for cinematic feel */}
       <div
         className="absolute inset-x-0 top-0 h-32 pointer-events-none"
         style={{
@@ -88,8 +145,6 @@ export default function GamePage(): JSX.Element {
             "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)",
         }}
       />
-
-      {/* ④ Very faint scanlines */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -100,9 +155,7 @@ export default function GamePage(): JSX.Element {
         }}
       />
 
-      {/* ⑤ UI — explicit z:2 */}
       <div className="absolute inset-0 flex flex-col" style={{ zIndex: 2 }}>
-        {/* TOP HUD */}
         <div
           className="flex items-center justify-between px-4 py-2 border-b border-stone-800/60"
           style={{
@@ -118,18 +171,42 @@ export default function GamePage(): JSX.Element {
             <span className="text-amber-500 text-xs tracking-widest uppercase">
               Session Active
             </span>
+            <span
+              style={{
+                fontFamily: "monospace",
+                fontSize: 10,
+                color: "#57534e",
+              }}
+            >
+              {participants.length}/6
+            </span>
           </div>
+
+          <span
+            className="text-[9px] tracking-widest px-2 py-0.5 font-bold"
+            style={{
+              fontFamily: "monospace",
+              color: roleMeta.color,
+              border: `1px solid ${roleMeta.color}`,
+              background: "rgba(0,0,0,0.6)",
+              textShadow: `0 0 6px ${roleMeta.glow}`,
+            }}
+          >
+            {roleMeta.label}
+          </span>
+
           <div
-            className={`text-2xl font-bold tracking-widest ${urgency} ${glitch ? "opacity-40" : ""} transition-opacity`}
+            className={`text-2xl font-bold tracking-widest ${urgency} transition-opacity ${glitch ? "opacity-40" : ""}`}
             style={{
               textShadow:
-                timeLeft < 120
+                timeLeft < 60
                   ? "0 0 10px rgba(239,68,68,0.8)"
                   : "0 0 8px rgba(245,158,11,0.6)",
             }}
           >
             {fmt(timeLeft)}
           </div>
+
           <div className="flex items-center gap-2 text-xs text-stone-500 tracking-wider">
             <span>ROUND {round} OF 5</span>
             <div className="flex gap-1">
@@ -148,16 +225,13 @@ export default function GamePage(): JSX.Element {
           </div>
         </div>
 
-        {/* MAIN */}
         <div className="flex flex-1 gap-3 px-3 py-3 min-h-0">
+          {/* Left column: slots 0-2 */}
           <div className="flex flex-col gap-2 w-44 shrink-0">
-            {left.map((p) => (
-              <PlayerCard key={p.id} player={p} />
-            ))}
+            {renderSlots(0, 3)}
           </div>
 
           <div className="flex-1 flex flex-col gap-2 min-w-0">
-            {/* Narrative */}
             <div
               className="flex-1 flex flex-col items-center justify-center px-6 py-4 border border-stone-800/50 relative overflow-hidden"
               style={{
@@ -206,7 +280,6 @@ export default function GamePage(): JSX.Element {
               )}
             </div>
 
-            {/* Clue log */}
             <div
               className="border border-stone-800/50 px-3 py-2"
               style={{
@@ -223,14 +296,12 @@ export default function GamePage(): JSX.Element {
             </div>
           </div>
 
+          {/* Right column: slots 3-5 */}
           <div className="flex flex-col gap-2 w-44 shrink-0">
-            {right.map((p) => (
-              <PlayerCard key={p.id} player={p} />
-            ))}
+            {renderSlots(3, 3)}
           </div>
         </div>
 
-        {/* BOTTOM BAR */}
         <div
           className="border-t border-stone-800/60 px-4 py-2 flex items-center gap-3"
           style={{
@@ -238,20 +309,12 @@ export default function GamePage(): JSX.Element {
             backdropFilter: "blur(10px)",
           }}
         >
-          <div className="flex gap-2">
-            {["M", "C"].map((ic, i) => (
-              <button
-                key={i}
-                className="w-8 h-8 border border-stone-600 flex items-center justify-center text-stone-400 hover:border-amber-600 hover:text-amber-400 transition-colors text-xs"
-              >
-                {ic}
-              </button>
-            ))}
-          </div>
+          <CallControls />
+
           <div className="flex gap-2 flex-1 justify-center">
             {ACTIONS.map((action) => {
-              const isAcc = action === "ACCUSE",
-                isAct = activeAction === action;
+              const isAcc = action === "ACCUSE";
+              const isAct = activeAction === action;
               return (
                 <button
                   key={action}
@@ -280,6 +343,7 @@ export default function GamePage(): JSX.Element {
               );
             })}
           </div>
+
           <div className="flex gap-2">
             {["»", "«"].map((s, i) => (
               <button
@@ -292,7 +356,6 @@ export default function GamePage(): JSX.Element {
           </div>
         </div>
 
-        {/* TICKER */}
         <div
           className={`px-4 py-1 text-xs text-stone-600 tracking-wide border-t border-stone-900/60 transition-opacity duration-200 ${glitch ? "opacity-20" : ""}`}
           style={{ background: "rgba(0,0,0,0.92)" }}
