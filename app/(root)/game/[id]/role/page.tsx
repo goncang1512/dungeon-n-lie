@@ -4,6 +4,7 @@ import { prisma } from "@/src/lib/prisma";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@/generated/prisma/client";
+import { pusher } from "@/src/lib/pusher/pusher";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -134,6 +135,10 @@ async function distributeRoles(
       });
     }),
   );
+
+  await pusher.trigger(`match-${matchId}`, "roles-assigned", {
+    roomId: matchId,
+  });
 
   return { role: myRole };
 }

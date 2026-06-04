@@ -28,6 +28,13 @@ export default function RolePageClient({
   const [phase, setPhase] = useState<Phase>("rolling");
   const [cycleIdx, setCycleIdx] = useState(0);
 
+  // null = belum mulai, 5..1 = countdown aktif, 0 = redirect
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Track previous phase untuk mendeteksi transisi ke "done" tanpa setState sync
+  const prevPhaseRef = useRef<Phase>("rolling");
+
+  // ── Animasi rolling → reveal → done ─────────────────────────────────────
   useEffect(() => {
     const cycleInterval = setInterval(() => {
       setCycleIdx((p) => (p + 1) % ROLE_KEYS.length);
@@ -44,6 +51,33 @@ export default function RolePageClient({
       clearTimeout(revealTimer);
     };
   }, []);
+
+  // ── Inisialisasi countdown saat phase berubah ke "done" ──────────────────
+  // Menggunakan prevPhaseRef untuk menghindari setState sync di dalam effect body
+  useEffect(() => {
+    if (phase === "done" && prevPhaseRef.current !== "done") {
+      setCountdown(5);
+    }
+    prevPhaseRef.current = phase;
+  }, [phase]);
+
+  // ── Tick countdown setiap detik ──────────────────────────────────────────
+  useEffect(() => {
+    if (countdown === null || countdown <= 0) return;
+
+    const timer = setTimeout(() => {
+      setCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  // ── Redirect saat countdown mencapai 0 ──────────────────────────────────
+  useEffect(() => {
+    if (countdown === 0) {
+      router.push(`/game/${matchId}`);
+    }
+  }, [countdown, matchId, router]);
 
   const meta = ROLE_META[initialRole];
   const cyclingMeta = ROLE_META[ROLE_KEYS[cycleIdx]];
@@ -241,30 +275,56 @@ export default function RolePageClient({
               )}
             </div>
 
-            {/* CTA */}
+            {/* CTA / Countdown */}
             {phase === "done" && (
               <div className="dungeon-fade-up shrink-0">
-                <button
-                  className="
-                    w-full dungeon-label text-[.7rem] tracking-[.22em] uppercase
-                    text-yellow-500 cursor-pointer
-                    border border-yellow-700/50
-                    px-8 py-3
-                    transition-all duration-300
-                    hover:border-yellow-500/80 hover:text-yellow-300
-                    hover:shadow-[0_0_22px_rgba(201,168,76,.2)]
-                    active:scale-[.98]
-                  "
-                  style={{
-                    background: "rgba(10,7,2,0.65)",
-                    backdropFilter: "blur(8px)",
-                    clipPath:
-                      "polygon(8px 0%,calc(100% - 8px) 0%,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0% calc(100% - 8px),0% 8px)",
-                  }}
-                  onClick={() => router.push(`/match/${matchId}`)}
-                >
-                  ✦ Enter the Dungeon
-                </button>
+                {countdown !== null && countdown > 0 ? (
+                  // ── Countdown aktif ──────────────────────────────────────
+                  <div
+                    className="w-full flex flex-col items-center gap-1 border border-yellow-700/50 px-8 py-3"
+                    style={{
+                      background: "rgba(10,7,2,0.65)",
+                      backdropFilter: "blur(8px)",
+                      clipPath:
+                        "polygon(8px 0%,calc(100% - 8px) 0%,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0% calc(100% - 8px),0% 8px)",
+                    }}
+                  >
+                    <p className="dungeon-label text-[9px] tracking-[.4em] text-yellow-700/60 uppercase">
+                      Entering dungeon in
+                    </p>
+                    <p
+                      className="dungeon-title text-4xl font-bold text-yellow-500 tabular-nums"
+                      style={{
+                        textShadow:
+                          "0 0 18px rgba(201,168,76,.7), 0 0 40px rgba(201,168,76,.3)",
+                      }}
+                    >
+                      {countdown}
+                    </p>
+                    {/* Progress bar */}
+                    <div className="w-full h-px mt-1 overflow-hidden">
+                      <div
+                        className="h-full bg-yellow-600/50 transition-all duration-1000 ease-linear"
+                        style={{ width: `${(countdown / 5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : countdown === null ? (
+                  // ── Menunggu countdown dimulai ───────────────────────────
+                  <div
+                    className="w-full flex flex-col items-center gap-1 border border-yellow-800/35 px-8 py-3"
+                    style={{
+                      background: "rgba(10,7,2,0.45)",
+                      backdropFilter: "blur(8px)",
+                      clipPath:
+                        "polygon(8px 0%,calc(100% - 8px) 0%,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0% calc(100% - 8px),0% 8px)",
+                    }}
+                  >
+                    <p className="dungeon-label text-[9px] tracking-[.4em] text-yellow-700/50 uppercase dungeon-glow-pulse">
+                      Entering the dungeon...
+                    </p>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -292,7 +352,6 @@ export default function RolePageClient({
             </div>
 
             <div className="relative flex-1 min-h-0">
-              {/* Character — sits directly on Three.js canvas, no color overlay */}
               <div className="absolute inset-0" style={{ zIndex: 2 }}>
                 <div className="w-125 h-screen">
                   <CharacterSelect
@@ -327,8 +386,13 @@ export default function RolePageClient({
           {phase === "rolling" &&
             "The dungeon shuffles the threads of destiny..."}
           {(phase === "reveal" || phase === "done") &&
+            countdown === null &&
             meta &&
             `A ${meta.label.toLowerCase()} walks among us. The dungeon has spoken.`}
+          {phase === "done" &&
+            countdown !== null &&
+            countdown > 0 &&
+            "All souls have been branded. The dungeon awaits..."}
         </p>
       </div>
     </div>
