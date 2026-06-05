@@ -60,17 +60,6 @@ export const STAT_NAMES: Record<StatKey, string> = {
   CHA: "Charisma",
 };
 
-/* =========================================================
-   BALANCING — total 27 baseline (avg 5.4)
-                STR  DEX  INT  PER  CHA  | TOTAL
-   Barbarian →   8    6    3    5    5   | 27
-   Wizard    →   3    5    9    7    3   | 27
-   Paladin   →   7    4    4    5    7   | 27
-   Cleric    →   5    4    6    8    4   | 27
-   Bard      →   4    6    5    4    8   | 27
-   Warlock   →   5    7    7    4    7   | 27
-   ========================================================= */
-
 export const CLASSES: DnDClass[] = [
   {
     id: "barbarian",

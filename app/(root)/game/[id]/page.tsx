@@ -1,17 +1,25 @@
+// app/(root)/game/[id]/page.tsx
+// Server Component — fetch SEMUA data di sini, termasuk
+// daftar semua pemain match. Tidak ada fetch di client.
+
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { StreamClient } from "@stream-io/node-sdk";
+import { JSX } from "react";
 
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import { JSX } from "react";
-import GamePageInit from "@/src/components/layouts/game-layouts/init-game";
+import GamePage from "@/src/components/layouts/game-layouts/gampe-page";
+import { MatchPlayer } from "@/src/components/layouts/game-layouts/game-wrapper";
+
+// ── Props dikirim ke client ───────────────────────────────
 
 export interface GamePageProps {
   matchUserId: string;
   userId: string;
   matchId: string;
   username: string;
+  character: string; // User.character (CharUser enum)
   role:
     | "survivor"
     | "observer"
@@ -19,6 +27,7 @@ export interface GamePageProps {
     | "analyst"
     | "infiltrator"
     | "catalyst";
+  players: MatchPlayer[]; // ← semua pemain di match
   streamToken: string;
   apiKey: string;
 }
@@ -27,15 +36,11 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-// Ambil waktu UTC real dari Stream API.
-// Endpoint ini adalah bagian dari Stream Dashboard — selalu tersedia.
-// Jika gagal (timeout/network), fallback ke offset besar agar token tetap valid.
 async function getRealUtcSeconds(): Promise<number> {
   const endpoints = [
     "https://hint.stream-io-api.com/time",
     "https://dashboard.getstream.io/time",
   ];
-
   for (const url of endpoints) {
     try {
       const res = await fetch(url, {
@@ -50,9 +55,6 @@ async function getRealUtcSeconds(): Promise<number> {
       continue;
     }
   }
-
-  // Fallback: mundurkan 5 menit dari jam lokal agar selalu valid
-  // meski jam Windows drift hingga 4 menit
   return Math.floor(Date.now() / 1000) - 300;
 }
 
@@ -61,13 +63,11 @@ export default async function GamePageServer({
 }: Props): Promise<JSX.Element> {
   const id = (await params).id;
 
-  const { result } = await auth.api.getSession({
-    headers: await headers(),
-  });
-
+  const { result } = await auth.api.getSession({ headers: await headers() });
   const user = result?.user;
   if (!user) redirect("/sign-in");
 
+  // ── 1. Fetch pemain lokal (untuk auth + role check) ───
   const matchUser = await prisma.matchUser.findFirst({
     where: {
       userId: user.id,
@@ -78,24 +78,51 @@ export default async function GamePageServer({
       userId: true,
       matchId: true,
       role: true,
-      user: { select: { username: true } },
+      user: {
+        select: {
+          username: true,
+          character: true,
+        },
+      },
     },
   });
 
   if (!matchUser) redirect("/");
 
+  // ── 2. Fetch SEMUA pemain di match (untuk GameState) ──
+  const allMatchUsers = await prisma.matchUser.findMany({
+    where: { matchId: matchUser.matchId },
+    select: {
+      userId: true,
+      role: true,
+      user: {
+        select: {
+          username: true,
+          character: true,
+        },
+      },
+    },
+    orderBy: { created_at: "asc" },
+  });
+
+  const players: MatchPlayer[] = allMatchUsers.map((mu) => ({
+    userId: mu.userId,
+    displayName: mu.user.username,
+    role: mu.role as MatchPlayer["role"],
+    classId: mu.user.character as MatchPlayer["classId"],
+  }));
+
+  // ── 3. Generate Stream token ──────────────────────────
   const apiKey = process.env.NEXT_PUBLIC_KEY_STREAM;
   const apiSecret = process.env.NEXT_PUBLIC_SECRET_STREAM;
 
   if (!apiKey || !apiSecret) {
     throw new Error(
-      `Stream env missing — NEXT_PUBLIC_KEY_STREAM: ${!!apiKey}, SECRET_STREAM: ${!!apiSecret}`,
+      `Stream env missing — KEY: ${!!apiKey}, SECRET: ${!!apiSecret}`,
     );
   }
 
-  // iat dari waktu UTC nyata, bukan jam lokal Windows yang bisa drift
   const utcNow = await getRealUtcSeconds();
-
   const streamClient = new StreamClient(apiKey, apiSecret);
   const streamToken = streamClient.generateUserToken({
     user_id: matchUser.userId,
@@ -108,10 +135,12 @@ export default async function GamePageServer({
     userId: matchUser.userId,
     matchId: matchUser.matchId,
     username: matchUser.user.username,
+    character: matchUser.user.character,
     role: matchUser.role as GamePageProps["role"],
+    players, // ← semua pemain
     streamToken,
     apiKey,
   };
 
-  return <GamePageInit {...props} />;
+  return <GamePage {...props} />;
 }

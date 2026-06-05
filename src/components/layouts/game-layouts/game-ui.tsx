@@ -1,14 +1,37 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { useState, useEffect, JSX, startTransition } from "react";
 import { useCallStateHooks } from "@stream-io/video-react-sdk";
-import "@stream-io/video-react-sdk/dist/css/styles.css";
 
 import { DungeonBackground } from "@/src/components/layouts/game-layouts/background-game";
-import { ClueRow, CLUES } from "@/src/components/layouts/game-layouts/clue-row";
-import { useState, useEffect, JSX } from "react";
 import { VideoTile } from "./stream/vidio-tile";
 import { CallControls } from "./stream/call-controls";
-import { Action, ACTIONS, NARRATIVE, ROLE_META, UserRole } from "./init-game";
+
+import {
+  UserRole,
+  ROLE_META,
+  PHASE_LABELS,
+  PHASE_COLORS,
+  OverlayTab,
+} from "./game-layouts/init-game";
+import { useGame } from "./game-layouts/game-state";
+import {
+  OverlayStory,
+  OverlayDice,
+  OverlayInfiltrator,
+  OverlayVote,
+} from "./game-layouts/overlay";
+import { useEngine } from "@/src/store/game.store";
+import { useShallow } from "zustand/shallow";
+import { STORY_LINE } from "./game-layouts/story-line";
+import { useParams } from "next/navigation";
+import { nextTurn } from "@/src/actions/game-match.action";
+import { SystemLogPanel } from "./game-layouts/log-game";
+
+function fmt(s: number): string {
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
 
 function EmptySlot({ slotIndex }: { slotIndex: number }): JSX.Element {
   return (
@@ -42,6 +65,479 @@ function EmptySlot({ slotIndex }: { slotIndex: number }): JSX.Element {
   );
 }
 
+function TopBar(): JSX.Element {
+  const { state, myPlayer } = useGame();
+  const roleMeta = ROLE_META[myPlayer?.role ?? "survivor"];
+  const urgency =
+    state.timeLeft < 60
+      ? "#f87171"
+      : state.timeLeft < 120
+        ? "#fbbf24"
+        : "#e7e5e4";
+  const phaseColor = PHASE_COLORS[state.phase];
+
+  const { discuss } = useEngine(
+    useShallow((state) => ({ discuss: state.discuss })),
+  );
+
+  return (
+    <div
+      className="flex items-center justify-between px-4 py-5 border-b border-stone-800/60 shrink-0"
+      style={{
+        background: "rgba(4,3,2,0.90)",
+        backdropFilter: "blur(12px)",
+        zIndex: 10,
+      }}
+    >
+      {/* Left: session indicator */}
+      <div className="flex items-center gap-2.5" style={{ minWidth: 180 }}>
+        <div
+          className="w-2 h-2 rounded-full"
+          style={{
+            background: "#f59e0b",
+            boxShadow: "0 0 6px rgba(245,158,11,0.9)",
+          }}
+        />
+        <span
+          className="text-amber-500 text-xs tracking-widest uppercase"
+          style={{ fontFamily: "monospace" }}
+        >
+          Session Active
+        </span>
+        <span
+          style={{ fontFamily: "monospace", fontSize: 10, color: "#44403c" }}
+        >
+          {state.players.filter((p) => !p.isEliminated).length}/6
+        </span>
+      </div>
+
+      {/* Center-left: role badge */}
+      <div className="flex-1 flex justify-center">
+        <span
+          className="text-[9px] tracking-widest px-3 py-0.5 font-bold border"
+          style={{
+            fontFamily: "monospace",
+            color: roleMeta.color,
+            borderColor: roleMeta.color,
+            background: "rgba(0,0,0,0.6)",
+          }}
+        >
+          {roleMeta.label}
+        </span>
+      </div>
+
+      {/* Center: timer */}
+      {discuss && (
+        <div className="flex-1 flex justify-center">
+          <span
+            className="text-[28px] font-bold tracking-widest"
+            style={{ fontFamily: "monospace", color: urgency }}
+          >
+            {fmt(state.timeLeft)}
+          </span>
+        </div>
+      )}
+
+      {/* Right: round + phase */}
+      <div className="flex-1 flex justify-end items-center gap-2">
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: 10,
+            color: "#57534e",
+            letterSpacing: "0.1em",
+          }}
+        >
+          ROUND {state.round} OF {state.maxRounds}
+        </span>
+        <div className="flex gap-1">
+          {Array.from({ length: state.maxRounds }, (_, i) => (
+            <div
+              key={i}
+              style={{
+                width: 18,
+                height: 3,
+                background: i < state.round ? "#d97706" : "#292524",
+              }}
+            />
+          ))}
+        </div>
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: 9,
+            letterSpacing: "0.1em",
+            color: phaseColor,
+            marginLeft: 4,
+          }}
+        >
+          {PHASE_LABELS[state.phase]}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
+  const params = useParams();
+  const { stage, matchPlayer, condition } = useEngine(
+    useShallow((state) => ({
+      stage: state.stage,
+      matchPlayer: state.matchPlayer,
+      condition: state.condition,
+    })),
+  );
+
+  useEffect(() => {
+    const newJourney = () => {
+      setTimeout(() => {
+        startTransition(async () => {
+          await nextTurn(1, matchPlayer[0].userId, String(params.id));
+        });
+      }, 5000);
+    };
+
+    newJourney();
+  }, []);
+
+  return (
+    <div
+      className="relative flex-1 flex flex-col items-center justify-center px-8"
+      style={{ background: "transparent" }}
+    >
+      {/* Corner brackets */}
+      {[
+        { top: 0, left: 0, bt: 1, br: 0, bb: 0, bl: 1 },
+        { top: 0, right: 0, bt: 1, br: 1, bb: 0, bl: 0 },
+        { bottom: 0, left: 0, bt: 0, br: 0, bb: 1, bl: 1 },
+        { bottom: 0, right: 0, bt: 0, br: 1, bb: 1, bl: 0 },
+      ].map((c, i) => (
+        <div
+          key={i}
+          className="absolute w-5 h-5"
+          style={{
+            top: (c as any).top !== undefined ? (c as any).top : "auto",
+            left: (c as any).left !== undefined ? (c as any).left : "auto",
+            right: (c as any).right !== undefined ? (c as any).right : "auto",
+            bottom:
+              (c as any).bottom !== undefined ? (c as any).bottom : "auto",
+            borderTop: c.bt ? "1px solid rgba(217,119,6,0.5)" : "none",
+            borderRight: c.br ? "1px solid rgba(217,119,6,0.5)" : "none",
+            borderBottom: c.bb ? "1px solid rgba(217,119,6,0.5)" : "none",
+            borderLeft: c.bl ? "1px solid rgba(217,119,6,0.5)" : "none",
+          }}
+        />
+      ))}
+
+      {/* Narrative text */}
+      {condition.stage !== null ? (
+        <p
+          className="text-center leading-relaxed italic max-w-md"
+          style={{
+            fontFamily: "monospace",
+            fontSize: 30,
+            color: "#e7e5e4",
+            textShadow: "0 1px 12px rgba(0,0,0,1)",
+          }}
+        >
+          {condition.success ? "SUCCESS" : "FAILED"}
+        </p>
+      ) : (
+        <p
+          className="text-center leading-relaxed italic max-w-md"
+          style={{
+            fontFamily: "monospace",
+            fontSize: 14,
+            color: "#e7e5e4",
+            textShadow: "0 1px 12px rgba(0,0,0,1)",
+          }}
+        >
+          &quot;
+          {stage !== null
+            ? STORY_LINE.stages.find((item) => item.id === stage)?.story
+            : STORY_LINE.setting.story}
+          &quot;
+        </p>
+      )}
+
+      {/* Glitch artifact */}
+      {glitch && (
+        <div
+          className="absolute bottom-6 left-0 right-0 h-px"
+          style={{ background: "rgba(217,119,6,0.4)" }}
+        />
+      )}
+    </div>
+  );
+}
+
+const OVERLAY_TITLES: Record<NonNullable<OverlayTab>, string> = {
+  story: "◈ NARASI & PETUNJUK",
+  dice: "◈ SKILL CHECK — D20",
+  infiltrator: "⚠ PANEL INFILTRATOR",
+  vote: "◈ FASE VOTING",
+};
+const OVERLAY_COLORS: Record<NonNullable<OverlayTab>, string> = {
+  story: "#60a5fa",
+  dice: "#d97706",
+  infiltrator: "#f87171",
+  vote: "#fbbf24",
+};
+
+function FeatureOverlay(): JSX.Element | null {
+  const { state, toggleTab } = useGame();
+  const tab = state.activeTab;
+  if (!tab) return null;
+
+  return (
+    <>
+      <style>{`@keyframes oslide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div
+        className="absolute inset-0 flex flex-col"
+        style={{
+          background: "rgba(4,3,2,0.97)",
+          zIndex: 5,
+          overflow: "hidden",
+          animation: "oslide .2s ease-out",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-4 py-2 border-b shrink-0"
+          style={{
+            borderBottomColor: "rgba(41,37,36,0.6)",
+            background: "rgba(0,0,0,0.5)",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: 10,
+              letterSpacing: "0.2em",
+              color: OVERLAY_COLORS[tab],
+            }}
+          >
+            {OVERLAY_TITLES[tab]}
+          </span>
+          <button
+            onClick={() => toggleTab(tab)}
+            style={{
+              fontFamily: "monospace",
+              fontSize: 10,
+              color: "#57534e",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            [TUTUP ×]
+          </button>
+        </div>
+
+        {/* Content */}
+        <div
+          className="flex-1 overflow-y-auto p-3"
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "#292524 transparent",
+          }}
+        >
+          {tab === "story" && <OverlayStory />}
+          {tab === "dice" && <OverlayDice />}
+          {tab === "infiltrator" && <OverlayInfiltrator />}
+          {tab === "vote" && <OverlayVote />}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function CenterPanel({ glitch }: { glitch: boolean }): JSX.Element {
+  return (
+    <div
+      className="flex-1 relative flex flex-col min-w-0"
+      style={{
+        margin: "6px 3px",
+        border: "1px solid rgba(41,37,36,0.5)",
+        background: "rgba(4,3,2,0.35)",
+        overflow: "hidden",
+      }}
+    >
+      <NarrativePanel glitch={glitch} />
+      <SystemLogPanel />
+      <FeatureOverlay />
+    </div>
+  );
+}
+
+function ActionButtons(): JSX.Element {
+  const { state, isInfiltrator, isCatalyst, toggleTab, advancePhase } =
+    useGame();
+
+  type Btn = {
+    label: string;
+    tab: OverlayTab;
+    danger?: boolean;
+    passive?: boolean;
+  };
+
+  const map: Record<string, Btn[]> = {
+    exploration: [
+      { label: "INVESTIGATE", tab: "story" },
+      { label: "ROLL CHECK", tab: "dice" },
+      { label: "WAIT", tab: null, passive: true },
+    ],
+    secret_action:
+      isInfiltrator || isCatalyst
+        ? [
+            { label: "SECRET ACTION", tab: "infiltrator", danger: true },
+            { label: "INVESTIGATE", tab: "story" },
+            { label: "WAIT", tab: null, passive: true },
+          ]
+        : [
+            { label: "INVESTIGATE", tab: "story" },
+            { label: "ROLL CHECK", tab: "dice" },
+            { label: "PROTECT", tab: null, passive: true },
+            { label: "WAIT", tab: null, passive: true },
+          ],
+    discussion: [
+      { label: "INVESTIGATE", tab: "story" },
+      { label: "PROTECT", tab: null, passive: true },
+      { label: "ACCUSE", tab: "vote", danger: true },
+      { label: "WAIT", tab: null, passive: true },
+    ],
+    voting: [
+      { label: "VOTE NOW", tab: "vote", danger: true },
+      { label: "INVESTIGATE", tab: "story" },
+      { label: "WAIT", tab: null, passive: true },
+    ],
+    trial: [
+      { label: "SIDANG", tab: "vote", danger: true },
+      { label: "PERSUASION", tab: "dice" },
+    ],
+    resolution: [{ label: "HASIL RONDE", tab: "vote" }],
+  };
+
+  const btns = map[state.phase] ?? map.exploration;
+
+  return (
+    <div className="flex gap-2 flex-1 justify-center">
+      {btns.map(({ label, tab, danger, passive }, i) => {
+        const isActive = tab !== null && state.activeTab === tab;
+        const borderColor = isActive
+          ? danger
+            ? "#f87171"
+            : "#d97706"
+          : danger
+            ? "rgba(248,113,113,0.55)"
+            : passive
+              ? "rgba(41,37,36,0.4)"
+              : "rgba(87,83,78,0.6)";
+        const color = isActive
+          ? danger
+            ? "#f87171"
+            : "#d97706"
+          : danger
+            ? "#ef4444"
+            : passive
+              ? "#44403c"
+              : "#a8a29e";
+
+        return (
+          <button
+            key={i}
+            onClick={() => tab && toggleTab(tab)}
+            disabled={passive}
+            className="px-5 py-1.5 text-xs tracking-widest font-bold border transition-all duration-150"
+            style={{
+              fontFamily: "monospace",
+              borderColor,
+              color,
+              background: isActive
+                ? danger
+                  ? "rgba(248,113,113,0.08)"
+                  : "rgba(217,119,6,0.08)"
+                : "transparent",
+              cursor: passive ? "default" : "pointer",
+              opacity: passive ? 0.4 : 1,
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
+
+      {/* NEXT PHASE button (DM control) */}
+      <button
+        onClick={advancePhase}
+        className="px-3 py-1.5 text-[9px] tracking-widest border transition-all duration-150"
+        style={{
+          fontFamily: "monospace",
+          borderColor: "rgba(41,37,36,0.4)",
+          color: "#44403c",
+          background: "transparent",
+          cursor: "pointer",
+          marginLeft: 8,
+        }}
+      >
+        NEXT ›
+      </button>
+    </div>
+  );
+}
+
+function EndgameOverlay(): JSX.Element {
+  const { state } = useGame();
+  const heroWin = state.winner === "hero";
+  const color = heroWin ? "#4ade80" : "#f87171";
+
+  return (
+    <>
+      <style>{`@keyframes endreveal{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}`}</style>
+      <div
+        className="fixed inset-0 flex items-center justify-center flex-col gap-5 text-center"
+        style={{ background: "rgba(0,0,0,0.94)", zIndex: 100 }}
+      >
+        <div
+          style={{
+            animation: "endreveal .6s ease-out forwards",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 56, color }}>{heroWin ? "✓" : "✗"}</div>
+          <div
+            style={{
+              fontFamily: "monospace",
+              fontSize: 22,
+              fontWeight: "bold",
+              letterSpacing: "0.2em",
+              color,
+            }}
+          >
+            {heroWin ? "ANCAMAN DINETRALISIR" : "SEMUA SISTEM DIKOMPROMIKAN"}
+          </div>
+          <p
+            style={{
+              fontFamily: "monospace",
+              fontSize: 11,
+              color: "#57534e",
+              maxWidth: 320,
+              lineHeight: 1.7,
+            }}
+          >
+            {heroWin
+              ? "Infiltrator berhasil diidentifikasi. Tim selamat dari Ravenwood Station."
+              : "Infiltrator berhasil menggagalkan misi. Tidak ada yang keluar dari fasilitas ini."}
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function GameUI({
   userId,
   role,
@@ -52,50 +548,39 @@ export function GameUI({
   const { useParticipants } = useCallStateHooks();
   const participants = useParticipants();
 
-  const [timeLeft, setTimeLeft] = useState<number>(300);
-  const [round] = useState<number>(2);
-  const [activeAction, setActiveAction] = useState<Action | null>(null);
-  const [systemMsg, setSystemMsg] = useState<string>(
-    "Koneksi stabil. Menunggu tindakan pemain...",
-  );
-  const [glitch, setGlitch] = useState<boolean>(false);
+  const { state } = useGame();
+  const [glitch, setGlitch] = useState(false);
 
   useEffect(() => {
-    const t = setInterval(() => setTimeLeft((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    const msgs = [
-      "Sensor grid tidak stabil di koridor timur...",
-      "Anomali terdeteksi. Memeriksa log sistem...",
-      "Peringatan: Koneksi terputus sesaat.",
-      "Aktivitas mencurigakan di dekat Chapel.",
-      "Pembaruan: Petunjuk baru tersedia.",
-    ];
     const id = setInterval(() => {
       setGlitch(true);
-      setSystemMsg(msgs[Math.floor(Math.random() * msgs.length)]);
-      setTimeout(() => setGlitch(false), 300);
-    }, 8000);
+      setTimeout(() => setGlitch(false), 350);
+    }, 9_000);
     return () => clearInterval(id);
   }, []);
 
-  const fmt = (s: number) =>
-    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  if (state.blackoutActive) {
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ background: "#000", zIndex: 999 }}
+      >
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: 10,
+            color: "#1c1917",
+            letterSpacing: "0.4em",
+          }}
+        >
+          BLACKOUT AKTIF
+        </span>
+      </div>
+    );
+  }
 
-  const urgency =
-    timeLeft < 60
-      ? "text-red-400"
-      : timeLeft < 120
-        ? "text-amber-400"
-        : "text-stone-300";
-
-  // FIX: Render slot berdasarkan participants array + empty slot untuk sisa.
-  // Sebelumnya participants[idx] langsung diakses by index — kalau participant
-  // join belakangan, urutan array bisa tidak sesuai index slot yang diharapkan.
-  const renderSlots = (startIdx: number, count: number) => {
-    return Array.from({ length: count }, (_, i) => {
+  const renderSlots = (startIdx: number, count: number) =>
+    Array.from({ length: count }, (_, i) => {
       const slotIdx = startIdx + i;
       const p = participants[slotIdx];
       if (!p) return <EmptySlot key={`e-${slotIdx}`} slotIndex={slotIdx} />;
@@ -110,9 +595,6 @@ export function GameUI({
         />
       );
     });
-  };
-
-  const roleMeta = ROLE_META[role];
 
   return (
     <div
@@ -121,6 +603,7 @@ export function GameUI({
     >
       <DungeonBackground />
 
+      {/* Visual overlay layers */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -149,206 +632,76 @@ export function GameUI({
         className="absolute inset-0 pointer-events-none"
         style={{
           zIndex: 1,
-          opacity: 0.03,
+          opacity: 0.025,
           backgroundImage:
             "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,1) 3px,rgba(0,0,0,1) 6px)",
         }}
       />
-
-      <div className="absolute inset-0 flex flex-col" style={{ zIndex: 2 }}>
+      {glitch && (
         <div
-          className="flex items-center justify-between px-4 py-2 border-b border-stone-800/60"
+          className="absolute inset-x-0 pointer-events-none"
           style={{
-            background: "rgba(4,3,2,0.88)",
-            backdropFilter: "blur(10px)",
+            zIndex: 3,
+            // eslint-disable-next-line react-hooks/purity
+            top: `${35 + Math.random() * 30}%`,
+            height: 1,
+            background: "rgba(217,119,6,0.35)",
           }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-2 h-2 rounded-full bg-amber-500"
-              style={{ boxShadow: "0 0 6px rgba(245,158,11,0.8)" }}
-            />
-            <span className="text-amber-500 text-xs tracking-widest uppercase">
-              Session Active
-            </span>
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: 10,
-                color: "#57534e",
-              }}
-            >
-              {participants.length}/6
-            </span>
-          </div>
+        />
+      )}
 
-          <span
-            className="text-[9px] tracking-widest px-2 py-0.5 font-bold"
-            style={{
-              fontFamily: "monospace",
-              color: roleMeta.color,
-              border: `1px solid ${roleMeta.color}`,
-              background: "rgba(0,0,0,0.6)",
-              textShadow: `0 0 6px ${roleMeta.glow}`,
-            }}
-          >
-            {roleMeta.label}
-          </span>
+      {/* Endgame */}
+      {state.phase === "endgame" && <EndgameOverlay />}
 
+      {/* ── MAIN LAYOUT ── */}
+      <div className="absolute inset-0 flex flex-col" style={{ zIndex: 2 }}>
+        {/* 1. Top bar */}
+        <TopBar />
+
+        {/* 2. Body */}
+        <div className="flex flex-1 min-h-0 gap-0">
+          {/* Left video column */}
           <div
-            className={`text-2xl font-bold tracking-widest ${urgency} transition-opacity ${glitch ? "opacity-40" : ""}`}
-            style={{
-              textShadow:
-                timeLeft < 60
-                  ? "0 0 10px rgba(239,68,68,0.8)"
-                  : "0 0 8px rgba(245,158,11,0.6)",
-            }}
+            className="flex flex-col shrink-0"
+            style={{ width: 176, gap: 2, padding: "6px 3px 6px 6px" }}
           >
-            {fmt(timeLeft)}
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-stone-500 tracking-wider">
-            <span>ROUND {round} OF 5</span>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((r) => (
-                <div
-                  key={r}
-                  className="w-4 h-1"
-                  style={{
-                    background: r <= round ? "#d97706" : "#292524",
-                    boxShadow:
-                      r <= round ? "0 0 4px rgba(217,119,6,0.6)" : "none",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-1 gap-3 px-3 py-3 min-h-0">
-          {/* Left column: slots 0-2 */}
-          <div className="flex flex-col gap-2 w-44 shrink-0">
             {renderSlots(0, 3)}
           </div>
 
-          <div className="flex-1 flex flex-col gap-2 min-w-0">
-            <div
-              className="flex-1 flex flex-col items-center justify-center px-6 py-4 border border-stone-800/50 relative overflow-hidden"
-              style={{
-                background: "rgba(4,3,2,0.60)",
-                backdropFilter: "blur(2px)",
-              }}
-            >
-              {[
-                "top-0 left-0",
-                "top-0 right-0",
-                "bottom-0 left-0",
-                "bottom-0 right-0",
-              ].map((pos, i) => (
-                <div
-                  key={i}
-                  className={`absolute ${pos} w-4 h-4 border-amber-600/60`}
-                  style={{
-                    borderTopWidth: i < 2 ? "1px" : "0",
-                    borderBottomWidth: i >= 2 ? "1px" : "0",
-                    borderLeftWidth: i % 2 === 0 ? "1px" : "0",
-                    borderRightWidth: i % 2 === 1 ? "1px" : "0",
-                  }}
-                />
-              ))}
-              <div className="flex gap-2 mb-4">
-                {[1, 2, 3].map((d) => (
-                  <div
-                    key={d}
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      background: d <= round % 3 ? "#d97706" : "#292524",
-                      boxShadow:
-                        d <= round % 3 ? "0 0 5px rgba(217,119,6,0.7)" : "none",
-                    }}
-                  />
-                ))}
-              </div>
-              <p
-                className="text-center text-stone-200 text-sm leading-relaxed italic max-w-xs"
-                style={{ textShadow: "0 1px 10px rgba(0,0,0,1)" }}
-              >
-                {NARRATIVE}
-              </p>
-              {glitch && (
-                <div className="absolute bottom-6 left-0 right-0 h-px bg-amber-500/50" />
-              )}
-            </div>
+          {/* Center */}
+          <CenterPanel glitch={glitch} />
 
-            <div
-              className="border border-stone-800/50 px-3 py-2"
-              style={{
-                background: "rgba(4,3,2,0.82)",
-                backdropFilter: "blur(6px)",
-              }}
-            >
-              <div className="text-[10px] text-stone-500 tracking-widest mb-1 uppercase">
-                System Log
-              </div>
-              {CLUES.map((c) => (
-                <ClueRow key={c.id} clue={c} />
-              ))}
-            </div>
-          </div>
-
-          {/* Right column: slots 3-5 */}
-          <div className="flex flex-col gap-2 w-44 shrink-0">
+          {/* Right video column */}
+          <div
+            className="flex flex-col shrink-0"
+            style={{ width: 176, gap: 2, padding: "6px 6px 6px 3px" }}
+          >
             {renderSlots(3, 3)}
           </div>
         </div>
 
+        {/* 3. Bottom action bar */}
         <div
-          className="border-t border-stone-800/60 px-4 py-2 flex items-center gap-3"
+          className="flex items-center gap-3 border-t shrink-0"
           style={{
-            background: "rgba(4,3,2,0.92)",
-            backdropFilter: "blur(10px)",
+            background: "rgba(4,3,2,0.94)",
+            backdropFilter: "blur(12px)",
+            borderTopColor: "rgba(41,37,36,0.6)",
+            padding: "7px 12px",
           }}
         >
           <CallControls />
-
-          <div className="flex gap-2 flex-1 justify-center">
-            {ACTIONS.map((action) => {
-              const isAcc = action === "ACCUSE";
-              const isAct = activeAction === action;
-              return (
-                <button
-                  key={action}
-                  onClick={() => setActiveAction(isAct ? null : action)}
-                  className={`px-5 py-1.5 text-xs tracking-widest font-bold border transition-all duration-200 ${
-                    isAct
-                      ? isAcc
-                        ? "bg-red-900/60 border-red-500 text-red-300"
-                        : "bg-amber-900/50 border-amber-500 text-amber-300"
-                      : isAcc
-                        ? "border-red-800/60 text-red-600 hover:border-red-500 hover:text-red-400"
-                        : "border-stone-600/60 text-stone-400 hover:border-amber-600 hover:text-amber-400"
-                  }`}
-                  style={
-                    isAct
-                      ? {
-                          boxShadow: isAcc
-                            ? "0 0 10px rgba(239,68,68,0.3)"
-                            : "0 0 10px rgba(245,158,11,0.3)",
-                        }
-                      : {}
-                  }
-                >
-                  {action}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex gap-2">
+          <ActionButtons />
+          <div className="flex gap-1.5">
             {["»", "«"].map((s, i) => (
               <button
                 key={i}
-                className="w-8 h-8 border border-stone-700 flex items-center justify-center text-stone-600 hover:border-stone-500 hover:text-stone-400 transition-colors text-xs"
+                className="w-7 h-7 border flex items-center justify-center text-stone-600 text-xs"
+                style={{
+                  borderColor: "rgba(87,83,78,0.4)",
+                  background: "transparent",
+                  fontFamily: "monospace",
+                }}
               >
                 {s}
               </button>
@@ -356,12 +709,20 @@ export function GameUI({
           </div>
         </div>
 
+        {/* 4. Status strip */}
         <div
-          className={`px-4 py-1 text-xs text-stone-600 tracking-wide border-t border-stone-900/60 transition-opacity duration-200 ${glitch ? "opacity-20" : ""}`}
-          style={{ background: "rgba(0,0,0,0.92)" }}
+          className={`px-4 py-1 text-[10px] border-t transition-opacity duration-200 ${glitch ? "opacity-20" : ""}`}
+          style={{
+            background: "rgba(0,0,0,0.94)",
+            borderTopColor: "rgba(41,37,36,0.4)",
+            fontFamily: "monospace",
+          }}
         >
-          <span className="text-stone-600 mr-2">SYS ›</span>
-          {systemMsg}
+          <span style={{ color: "#44403c" }}>SYS › </span>
+          <span style={{ color: "#57534e" }}>
+            {state.systemLog[state.systemLog.length - 1]?.text ??
+              "Koneksi stabil. Menunggu tindakan pemain..."}
+          </span>
         </div>
       </div>
     </div>

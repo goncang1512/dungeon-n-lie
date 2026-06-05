@@ -1,9 +1,13 @@
+import { nextTurn } from "@/src/actions/game-match.action";
+import { getNextStage } from "@/src/components/layouts/game-layouts/game-layouts/story-line";
 import {
   ChatStoreType,
   PlayerMatch,
   useChatStore,
 } from "@/src/store/chat.store";
+import { EngineType, useEngine } from "@/src/store/game.store";
 import Pusher from "pusher-js";
+import { startTransition } from "react";
 
 export const pusherClientMatch = new Pusher(
   process.env.NEXT_PUBLIC_KEY_PUSHER!,
@@ -82,4 +86,51 @@ export const handleUserReady = (
   });
 
   setValue("players", updatedPlayers);
+};
+
+export type HandleTurnGameType = {
+  room_id: string;
+  data: {
+    stage: string | number | null;
+    turn: string;
+  };
+};
+
+export const handleTurnGame = (
+  data: HandleTurnGameType,
+  setValue: EngineType["setValue"],
+) => {
+  setValue("stage", data.data.stage);
+  setValue("turn", data.data.turn);
+  setValue("condition", { stage: null, success: false });
+};
+
+export type TurnConditionType = {
+  room_id: string;
+  data: {
+    stage: number;
+    success: boolean;
+  };
+};
+
+export const handleTurnCondition = (
+  data: TurnConditionType,
+  user_id: string,
+  room_id: string,
+  setValue: EngineType["setValue"],
+) => {
+  const conditionStage = useEngine.getState().condition;
+
+  setValue("condition", {
+    ...conditionStage,
+    stage: data.data.stage,
+    success: data.data.success,
+  });
+
+  setTimeout(() => {
+    startTransition(async () => {
+      const nextStage = getNextStage(data.data.stage);
+      await nextTurn(nextStage, user_id, room_id);
+    });
+  }, 5000);
 };

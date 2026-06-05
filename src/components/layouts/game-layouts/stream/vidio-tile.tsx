@@ -6,8 +6,8 @@ import {
   SfuModels,
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
-import { ROLE_META, UserRole } from "../init-game";
 import { JSX } from "react";
+import { ROLE_META, UserRole } from "../game-layouts/init-game";
 
 type StreamParticipant = ReturnType<
   ReturnType<typeof useCallStateHooks>["useParticipants"]

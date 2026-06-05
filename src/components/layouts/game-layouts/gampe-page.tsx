@@ -1,5 +1,7 @@
 "use client";
 
+// gampe-page.tsx — Stream setup, teruskan semua props ke GameWrapper.
+
 import {
   StreamVideo,
   StreamVideoClient,
@@ -11,59 +13,23 @@ import "@stream-io/video-react-sdk/dist/css/styles.css";
 
 import { useState, useEffect, useRef, JSX } from "react";
 import { GamePageProps } from "@/app/(root)/game/[id]/page";
-import { GameUI } from "./game-ui";
+import { GameWrapper } from "./game-wrapper";
+import { useEngine } from "@/src/store/game.store";
+import { useShallow } from "zustand/shallow";
 
-export const NARRATIVE =
-  '"The torches dim. Somewhere in the corridor, a door was left open that should have been sealed. Someone moved when the lights went out."';
-
-export const ACTIONS = ["INVESTIGATE", "PROTECT", "ACCUSE", "WAIT"] as const;
-export type Action = (typeof ACTIONS)[number];
-export type UserRole = GamePageProps["role"];
-
-export const ROLE_META: Record<
-  UserRole,
-  { label: string; color: string; glow: string }
-> = {
-  survivor: {
-    label: "SURVIVOR",
-    color: "#78716c",
-    glow: "rgba(120,113,108,0.6)",
-  },
-  observer: {
-    label: "OBSERVER",
-    color: "#60a5fa",
-    glow: "rgba(96,165,250,0.6)",
-  },
-  guardian: {
-    label: "GUARDIAN",
-    color: "#34d399",
-    glow: "rgba(52,211,153,0.6)",
-  },
-  analyst: {
-    label: "ANALYST",
-    color: "#a78bfa",
-    glow: "rgba(167,139,250,0.6)",
-  },
-  infiltrator: {
-    label: "INFILTRATOR",
-    color: "#f87171",
-    glow: "rgba(248,113,113,0.6)",
-  },
-  catalyst: {
-    label: "CATALYST",
-    color: "#fbbf24",
-    glow: "rgba(251,191,36,0.6)",
-  },
-};
-
-export default function GamePageInit({
+export default function GamePage({
   userId,
   matchId,
   username,
+  character,
   role,
+  players,
   streamToken,
   apiKey,
 }: GamePageProps): JSX.Element {
+  const { setValue } = useEngine(
+    useShallow((state) => ({ setValue: state.setValue })),
+  );
   const [client, setClient] = useState<StreamVideoClient | undefined>();
   const [call, setCall] = useState<Call | undefined>();
   const [error, setError] = useState<string | null>(null);
@@ -80,33 +46,25 @@ export default function GamePageInit({
     }
 
     const streamUser: User = { id: userId, name: username };
-
     const myClient = new StreamVideoClient({
       apiKey,
       user: streamUser,
       token: streamToken,
     });
-
     const myCall = myClient.call("default", matchId);
 
     myCall
       .join({ create: true })
       .then(() => {
-        // FIX: Set state dulu agar komponen mount, baru enable devices.
-        // Sebelumnya camera.enable() dipanggil sebelum setCall() — ini bisa
-        // menyebabkan race condition karena React belum mount StreamCall.
         setClient(myClient);
         setCall(myCall);
-
-        // Enable devices setelah state update cycle selesai
         Promise.resolve().then(() => {
           myCall.camera.enable().catch(console.error);
           myCall.microphone.enable().catch(console.error);
         });
       })
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : "Gagal join call.";
-        setError(msg);
+        setError(err instanceof Error ? err.message : "Gagal join call.");
         myClient.disconnectUser().catch(console.error);
       });
 
@@ -115,6 +73,12 @@ export default function GamePageInit({
       myClient.disconnectUser().catch(console.error);
     };
   }, []);
+
+  useEffect(() => {
+    if (players) {
+      setValue("matchPlayer", players);
+    }
+  }, [players]);
 
   if (error) {
     return (
@@ -154,7 +118,12 @@ export default function GamePageInit({
   return (
     <StreamVideo client={client}>
       <StreamCall call={call}>
-        <GameUI userId={userId} role={role} />
+        <GameWrapper
+          userId={userId}
+          role={role}
+          classId={character}
+          players={players}
+        />
       </StreamCall>
     </StreamVideo>
   );

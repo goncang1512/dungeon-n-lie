@@ -14,3 +14,5 @@ export interface Clue {
   text: string;
   severity: "high" | "medium" | "low";
 }
+
+export type OverlayTab = "story" | "dice" | "infiltrator" | "vote" | null;
