@@ -160,7 +160,7 @@ export const triggerEndGame = async (
 
   await prisma.matchUser.deleteMany({
     where: {
-      id: data.id,
+      matchId: data.id,
     },
   });
 

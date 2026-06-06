@@ -173,27 +173,27 @@ function TopBar(): JSX.Element {
 
 function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
   const params = useParams();
-  const { stage, matchPlayer, condition } = useEngine(
+  const { stage, matchPlayer, condition, winner } = useEngine(
     useShallow((state) => ({
       stage: state.stage,
       matchPlayer: state.matchPlayer,
       condition: state.condition,
+      winner: state.winner,
     })),
   );
 
   useEffect(() => {
-    const newJourney = () => {
+    // Jangan restart kalau game sudah selesai
+    if (winner) return;
+
+    if (stage === null) {
       setTimeout(() => {
         startTransition(async () => {
           await nextTurn("1", matchPlayer[0].userId, String(params.id));
         });
       }, 5000);
-    };
-
-    if (stage === null) {
-      newJourney();
     }
-  }, [stage]);
+  }, [stage, winner]);
 
   const storyCondition = useMemo(() => {
     const res = STORY_LINE.stages
