@@ -88,7 +88,13 @@ export default function GamePage({
     if (turn) {
       setValue("turn", turn);
     }
-  }, [players, stage, turn]);
+
+    if (userId) {
+      const session = players.find((item) => item.userId === userId) ?? null;
+
+      setValue("sessionGame", session);
+    }
+  }, [players, stage, turn, userId]);
 
   if (error) {
     return (

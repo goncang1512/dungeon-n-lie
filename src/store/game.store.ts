@@ -10,6 +10,7 @@ export type EngineType = {
   stage: null | string;
   discuss: boolean;
   matchPlayer: MatchPlayer[];
+  sessionGame: MatchPlayer | null;
   pickCondition: string;
   condition: {
     stage: string | null;
@@ -21,6 +22,13 @@ export type EngineType = {
     target: string;
   }[];
   state: string;
+  voteResult: {
+    userId: string;
+    character: string;
+    role: string;
+    name: string;
+  };
+  winner: "infiltrator" | "innocent" | null;
 };
 
 export const useEngine = create<EngineType>((set) => ({
@@ -37,4 +45,12 @@ export const useEngine = create<EngineType>((set) => ({
   },
   voteTarget: [],
   state: "",
+  voteResult: {
+    character: "",
+    role: "",
+    userId: "",
+    name: "",
+  },
+  sessionGame: null,
+  winner: null,
 }));

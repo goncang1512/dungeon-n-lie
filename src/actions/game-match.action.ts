@@ -114,3 +114,35 @@ export const voteTargetHandle = async (
 ) => {
   await pusher.trigger(`match-${room_id}`, "vote-game", voteTarget);
 };
+
+export const eliminatedTarget = async (
+  voteResult: EngineType["voteResult"],
+  room_id: string,
+) => {
+  await prisma.matchUser.updateMany({
+    where: {
+      userId: voteResult.userId,
+      match: {
+        room_id,
+      },
+    },
+    data: {
+      status: "killed",
+    },
+  });
+  await pusher.trigger(`match-${room_id}`, "eliminated-vote", voteResult);
+};
+
+export type EndGameWinner = "infiltrator" | "innocent";
+
+export type EndGamePayload = {
+  winner: EndGameWinner;
+  reason: "vote" | "last_man" | "last_stage";
+};
+
+export const triggerEndGame = async (
+  payload: EndGamePayload,
+  room_id: string,
+) => {
+  await pusher.trigger(`match-${room_id}`, "end-game", payload);
+};

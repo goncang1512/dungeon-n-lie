@@ -1,18 +1,24 @@
+import { useEngine } from "@/src/store/game.store";
 import { useCallStateHooks } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import { JSX } from "react";
+import { useShallow } from "zustand/shallow";
 
 export function CallControls(): JSX.Element {
   const { useCameraState, useMicrophoneState } = useCallStateHooks();
   const { camera, isMute: camMuted } = useCameraState();
   const { microphone, isMute: micMuted } = useMicrophoneState();
 
+  const sessionGame = useEngine(useShallow((state) => state.sessionGame));
+  const isKilled = sessionGame?.status === "killed";
+
   return (
     <div className="flex gap-2">
       {/* Mic button */}
       <button
-        onClick={() => microphone.toggle()}
-        title={micMuted ? "Unmute mic" : "Mute mic"}
+        onClick={() => !isKilled && microphone.toggle()}
+        disabled={isKilled}
+        title={isKilled ? "Eliminated" : micMuted ? "Unmute mic" : "Mute mic"}
         className="group flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 transition-all duration-200"
         style={{
           background: micMuted ? "rgba(239,68,68,0.12)" : "rgba(87,83,78,0.10)",
@@ -67,8 +73,15 @@ export function CallControls(): JSX.Element {
 
       {/* Camera button */}
       <button
-        onClick={() => camera.toggle()}
-        title={camMuted ? "Turn on camera" : "Turn off camera"}
+        onClick={() => !isKilled && camera.toggle()}
+        disabled={isKilled}
+        title={
+          isKilled
+            ? "Eliminated"
+            : camMuted
+              ? "Turn on camera"
+              : "Turn off camera"
+        }
         className="group flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 transition-all duration-200"
         style={{
           background: camMuted ? "rgba(239,68,68,0.12)" : "rgba(87,83,78,0.10)",

@@ -19,16 +19,7 @@ import {
 import { useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
 import { $Enums } from "@/generated/prisma/client";
-
-const getPlayerTurn = (stage: number, players: MatchPlayer[]) => {
-  if (!players.length) return null;
-
-  const index = (stage - 1) % players.length;
-
-  return players[index];
-};
-
-// ── MatchPlayer ───────────────────────────────────────────
+import { getPlayerTurn } from "./game-layouts/story-line";
 
 export interface MatchPlayer {
   userId: string;
@@ -83,10 +74,7 @@ export function GameWrapper({
     const onTurnGame = (data: HandleTurnGameType) =>
       handleTurnGame(data, setValue);
     const onConditionGame = (data: TurnConditionType) => {
-      const nextPlayer = getPlayerTurn(
-        Number(data.data.stage) + 1,
-        matchPlayer,
-      );
+      const nextPlayer = getPlayerTurn(String(data.data.stage), matchPlayer);
 
       if (!nextPlayer) return;
 
