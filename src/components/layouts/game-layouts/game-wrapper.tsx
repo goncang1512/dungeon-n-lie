@@ -54,11 +54,9 @@ export function GameWrapper({
   timeLimit = 300,
 }: GameWrapperProps): JSX.Element {
   const params = useParams();
-  const { setValue, matchPlayer, turn } = useEngine(
+  const { setValue } = useEngine(
     useShallow((state) => ({
       setValue: state.setValue,
-      matchPlayer: state.matchPlayer,
-      turn: state.turn,
     })),
   );
   const initialState = useMemo(
@@ -75,7 +73,10 @@ export function GameWrapper({
     const onTurnGame = (data: HandleTurnGameType) =>
       handleTurnGame(data, setValue);
     const onConditionGame = (data: TurnConditionType) => {
-      const nextPlayer = getNextAliveTurn(turn, matchPlayer);
+      const { turn: currentTurn, matchPlayer: currentPlayers } =
+        useEngine.getState();
+
+      const nextPlayer = getNextAliveTurn(currentTurn, currentPlayers);
       if (!nextPlayer) return;
 
       handleTurnCondition(data, nextPlayer.userId, String(params.id), setValue);
