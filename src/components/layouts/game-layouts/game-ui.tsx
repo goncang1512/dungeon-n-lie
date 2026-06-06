@@ -189,43 +189,43 @@ function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
     })),
   );
 
-  const stageWasSetRef = useRef(false);
+  const hasTriggeredRef = useRef(false);
 
   useEffect(() => {
-    if (stage !== null) {
-      stageWasSetRef.current = true;
-    }
-  }, [stage]);
-
-  useEffect(() => {
+    // Game sudah selesai — jangan trigger apapun
     if (winner) return;
 
-    // Jangan restart kalau store belum ter-hydrate
-    // (stage belum pernah punya nilai non-null sejak mount)
-    if (!stageWasSetRef.current) return;
+    // Stage sudah ada — ini bukan intro, skip
+    if (stage !== null) return;
 
-    // Jangan restart kalau matchPlayer belum ada
+    // matchPlayer belum ter-hydrate dari server
     if (!matchPlayer.length) return;
 
-    if (stage === null && stageWasSetRef.current) {
-      setTimeout(() => {
-        startTransition(async () => {
-          await nextTurn("1", matchPlayer[0].userId, String(params.id));
-        });
-      }, 5000);
-    }
-  }, [stage, winner]);
+    // Sudah pernah trigger — jangan double call
+    if (hasTriggeredRef.current) return;
+
+    // Ambil sessionGame fresh dari store
+    const { sessionGame } = useEngine.getState();
+
+    // Hanya matchPlayer[0] yang trigger nextTurn
+    // matchPlayer diurutkan by created_at ASC dari server — konsisten di semua client
+    if (sessionGame?.userId !== matchPlayer[0].userId) return;
+
+    hasTriggeredRef.current = true;
+
+    setTimeout(() => {
+      startTransition(async () => {
+        await nextTurn("1", matchPlayer[0].userId, String(params.id));
+      });
+    }, 10000);
+  }, [stage, matchPlayer, winner]);
 
   const storyCondition = useMemo(() => {
     const res = STORY_LINE.stages
       .find((item) => item.id === condition.stage)
       ?.choices?.find((choice) => choice.id === condition.choice);
 
-    if (condition.success) {
-      return res?.success.story;
-    } else {
-      return res?.failure.story;
-    }
+    return condition.success ? res?.success.story : res?.failure.story;
   }, [condition]);
 
   return (
