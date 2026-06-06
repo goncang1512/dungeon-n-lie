@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, JSX, startTransition, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  JSX,
+  startTransition,
+  useMemo,
+  useRef,
+} from "react";
 import { useCallStateHooks } from "@stream-io/video-react-sdk";
 
 import { DungeonBackground } from "@/src/components/layouts/game-layouts/background-game";
@@ -182,11 +189,25 @@ function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
     })),
   );
 
+  const stageWasSetRef = useRef(false);
+
   useEffect(() => {
-    // Jangan restart kalau game sudah selesai
+    if (stage !== null) {
+      stageWasSetRef.current = true;
+    }
+  }, [stage]);
+
+  useEffect(() => {
     if (winner) return;
 
-    if (stage === null) {
+    // Jangan restart kalau store belum ter-hydrate
+    // (stage belum pernah punya nilai non-null sejak mount)
+    if (!stageWasSetRef.current) return;
+
+    // Jangan restart kalau matchPlayer belum ada
+    if (!matchPlayer.length) return;
+
+    if (stage === null && stageWasSetRef.current) {
       setTimeout(() => {
         startTransition(async () => {
           await nextTurn("1", matchPlayer[0].userId, String(params.id));
