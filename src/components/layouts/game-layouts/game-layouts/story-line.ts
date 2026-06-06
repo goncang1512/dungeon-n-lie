@@ -387,3 +387,25 @@ export function getPlayerTurn(
   const index = extractStageNumber(stage);
   return alivePlayers[index % alivePlayers.length];
 }
+
+export function getNextAliveTurn(
+  currentUserId: string | null,
+  players: MatchPlayer[],
+): MatchPlayer | null {
+  const alivePlayers = players.filter((p) => p.status !== "killed");
+  if (!alivePlayers.length) return null;
+
+  // Kalau belum ada turn sebelumnya, mulai dari index 0
+  if (!currentUserId) return alivePlayers[0];
+
+  const currentIndex = alivePlayers.findIndex(
+    (p) => p.userId === currentUserId,
+  );
+
+  // Kalau player saat ini sudah tidak ada di alive list (sudah killed),
+  // tetap lanjut dari posisi yang seharusnya
+  const nextIndex =
+    (currentIndex === -1 ? 0 : currentIndex + 1) % alivePlayers.length;
+
+  return alivePlayers[nextIndex];
+}

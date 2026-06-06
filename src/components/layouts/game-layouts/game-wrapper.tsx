@@ -19,7 +19,7 @@ import {
 import { useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
 import { $Enums } from "@/generated/prisma/client";
-import { getPlayerTurn } from "./game-layouts/story-line";
+import { getNextAliveTurn } from "./game-layouts/story-line";
 
 export interface MatchPlayer {
   userId: string;
@@ -54,10 +54,11 @@ export function GameWrapper({
   timeLimit = 300,
 }: GameWrapperProps): JSX.Element {
   const params = useParams();
-  const { setValue, matchPlayer } = useEngine(
+  const { setValue, matchPlayer, turn } = useEngine(
     useShallow((state) => ({
       setValue: state.setValue,
       matchPlayer: state.matchPlayer,
+      turn: state.turn,
     })),
   );
   const initialState = useMemo(
@@ -74,8 +75,7 @@ export function GameWrapper({
     const onTurnGame = (data: HandleTurnGameType) =>
       handleTurnGame(data, setValue);
     const onConditionGame = (data: TurnConditionType) => {
-      const nextPlayer = getPlayerTurn(String(data.data.stage), matchPlayer);
-
+      const nextPlayer = getNextAliveTurn(turn, matchPlayer);
       if (!nextPlayer) return;
 
       handleTurnCondition(data, nextPlayer.userId, String(params.id), setValue);

@@ -144,5 +144,25 @@ export const triggerEndGame = async (
   payload: EndGamePayload,
   room_id: string,
 ) => {
+  const data = await prisma.match.update({
+    where: {
+      room_id,
+    },
+    data: {
+      status: "finish",
+      stage: null,
+      turn: "",
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  await prisma.matchUser.deleteMany({
+    where: {
+      id: data.id,
+    },
+  });
+
   await pusher.trigger(`match-${room_id}`, "end-game", payload);
 };

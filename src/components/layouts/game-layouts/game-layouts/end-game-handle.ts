@@ -10,23 +10,22 @@ type Player = {
   status: "life" | "killed";
 };
 
+const LAST_STAGE = "5";
+
 export function checkEndGame(
   alivePlayers: Player[],
   isLastStage: boolean,
 ): EndGamePayload | null {
   const infiltratorAlive = alivePlayers.some((p) => p.role === "infiltrator");
 
-  // Infiltrator sudah dieliminasi → innocent menang
   if (!infiltratorAlive) {
     return { winner: "innocent", reason: "vote" };
   }
 
-  // Hanya 1 player tersisa dan itu infiltrator → infiltrator menang
   if (alivePlayers.length <= 1) {
     return { winner: "infiltrator", reason: "last_man" };
   }
 
-  // Stage terakhir ("5") selesai dan infiltrator masih hidup → infiltrator menang
   if (isLastStage && infiltratorAlive) {
     return { winner: "infiltrator", reason: "last_stage" };
   }
@@ -41,16 +40,15 @@ export function handleEndGameEvent(
   setValue("winner", data.winner);
 }
 
+// Dipanggil setelah voting selesai
 export async function resolveEndGame(
   matchPlayers: Player[],
   eliminatedUserId: string | null,
   currentStage: string,
   room_id: string,
 ): Promise<EndGamePayload | null> {
-  const LAST_STAGE = "5";
   const isLastStage = currentStage === LAST_STAGE;
 
-  // Hitung sisa player hidup setelah eliminasi ini
   const alivePlayers = matchPlayers.filter(
     (p) => p.status !== "killed" && p.userId !== eliminatedUserId,
   );
@@ -62,4 +60,26 @@ export async function resolveEndGame(
   }
 
   return endGamePayload;
+}
+
+// Dipanggil setelah roll dice selesai di stage terakhir
+// Tidak ada eliminasi — hanya cek apakah stage "5" dan infiltrator masih hidup
+export async function resolveEndGameAfterRoll(
+  matchPlayers: Player[],
+  currentStage: string,
+  room_id: string,
+): Promise<EndGamePayload | null> {
+  if (currentStage !== LAST_STAGE) return null;
+
+  const alivePlayers = matchPlayers.filter((p) => p.status !== "killed");
+  const infiltratorAlive = alivePlayers.some((p) => p.role === "infiltrator");
+
+  if (!infiltratorAlive) return null; // infiltrator sudah mati sebelumnya, innocent menang via vote
+
+  const payload: EndGamePayload = {
+    winner: "infiltrator",
+    reason: "last_stage",
+  };
+  await triggerEndGame(payload, room_id);
+  return payload;
 }

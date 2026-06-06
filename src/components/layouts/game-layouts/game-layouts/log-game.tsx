@@ -3,7 +3,7 @@
 import { JSX, startTransition, useEffect, useMemo, useState } from "react";
 import { EngineType, useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
-import { getNextStage, getPlayerTurn, STORY_LINE } from "./story-line";
+import { getNextAliveTurn, getNextStage, STORY_LINE } from "./story-line";
 import { authClient } from "@/src/lib/auth/client";
 import { getClassById, Stats } from "@/src/types/classes";
 import {
@@ -21,7 +21,11 @@ import {
 import { getMostVoted, useVoteElimination } from "./useVote";
 import { VoteEliminatedDialog } from "./elemited-vote";
 import { EndGameOverlay } from "./end-game-overlay";
-import { handleEndGameEvent, resolveEndGame } from "./end-game-handle";
+import {
+  handleEndGameEvent,
+  resolveEndGame,
+  resolveEndGameAfterRoll,
+} from "./end-game-handle";
 
 export function SystemLogPanel(): JSX.Element {
   const { data } = authClient.useSession();
@@ -111,6 +115,12 @@ export function SystemLogPanel(): JSX.Element {
             String(params.id),
             String(pickCondition),
           );
+
+          await resolveEndGameAfterRoll(
+            matchPlayers,
+            String(stage),
+            String(params.id),
+          );
         });
       }
     }, 80);
@@ -132,7 +142,6 @@ export function SystemLogPanel(): JSX.Element {
 
     const onEliminatedPlayer = (data: EngineType["voteResult"]) => {
       setValue("voteResult", data);
-      // Update status player di matchPlayer store juga
       setValue(
         "matchPlayer",
         matchPlayers.map((p) =>
@@ -190,7 +199,12 @@ export function SystemLogPanel(): JSX.Element {
       setTimeout(async () => {
         if (!endGame) {
           const nextStage = getNextStage(stage as string);
-          const newTurn = getPlayerTurn(String(nextStage), matchPlayers);
+
+          const playersAfterElimination = matchPlayers.filter(
+            (p) => p.userId !== eliminatedPlayer?.userId,
+          );
+
+          const newTurn = getNextAliveTurn(turn, playersAfterElimination);
           await nextTurn(nextStage, String(newTurn?.userId), String(params.id));
         }
 

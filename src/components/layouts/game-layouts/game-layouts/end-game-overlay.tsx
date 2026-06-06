@@ -2,10 +2,10 @@
 
 import { EndGameWinner } from "@/src/actions/game-match.action";
 import { JSX, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface EndGameOverlayProps {
   winner: EndGameWinner | null;
-  /** Role player ini sendiri — untuk tentukan menang atau kalah */
   myRole: string;
 }
 
@@ -46,10 +46,10 @@ export function EndGameOverlay({
   myRole,
 }: EndGameOverlayProps): JSX.Element | null {
   const [visible, setVisible] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (winner) {
-      // Delay sedikit supaya tidak langsung pop
       const t = setTimeout(() => setVisible(true), 800);
       return () => clearTimeout(t);
     }
@@ -59,7 +59,6 @@ export function EndGameOverlay({
 
   const config = WINNER_CONFIG[winner];
 
-  // Tentukan apakah player ini menang atau kalah berdasarkan role-nya
   const isInfiltrator = myRole === "infiltrator";
   const playerWins =
     (winner === "infiltrator" && isInfiltrator) ||
@@ -104,18 +103,10 @@ export function EndGameOverlay({
               bottom: pos.startsWith("b") ? 0 : "auto",
               left: pos.endsWith("l") ? 0 : "auto",
               right: pos.endsWith("r") ? 0 : "auto",
-              borderTop: pos.startsWith("t")
-                ? `2px solid ${config.color}`
-                : "none",
-              borderBottom: pos.startsWith("b")
-                ? `2px solid ${config.color}`
-                : "none",
-              borderLeft: pos.endsWith("l")
-                ? `2px solid ${config.color}`
-                : "none",
-              borderRight: pos.endsWith("r")
-                ? `2px solid ${config.color}`
-                : "none",
+              borderTop: pos.startsWith("t") ? `2px solid ${config.color}` : "none",
+              borderBottom: pos.startsWith("b") ? `2px solid ${config.color}` : "none",
+              borderLeft: pos.endsWith("l") ? `2px solid ${config.color}` : "none",
+              borderRight: pos.endsWith("r") ? `2px solid ${config.color}` : "none",
               opacity: 0.7,
             }}
           />
@@ -161,16 +152,13 @@ export function EndGameOverlay({
         </div>
 
         {/* Divider */}
-        <div
-          className="w-full h-px"
-          style={{ background: `${config.border}` }}
-        />
+        <div className="w-full h-px" style={{ background: config.border }} />
 
-        {/* Personal result — menang / kalah untuk player ini */}
+        {/* Personal result */}
         <div
           className="flex flex-col items-center gap-1 px-6 py-3 w-full"
           style={{
-            background: `rgba(0,0,0,0.4)`,
+            background: "rgba(0,0,0,0.4)",
             border: `1px solid ${personal.color}22`,
           }}
         >
@@ -200,6 +188,30 @@ export function EndGameOverlay({
           Role kamu:{" "}
           <span style={{ color: config.color }}>{myRole.toUpperCase()}</span>
         </p>
+
+        {/* Home button */}
+        <button
+          onClick={() => router.push("/")}
+          className="w-full py-2.5 tracking-[0.25em] text-[11px] uppercase font-bold transition-all duration-200"
+          style={{
+            fontFamily: "monospace",
+            background: "rgba(0,0,0,0)",
+            border: `1px solid ${config.color}55`,
+            color: `${config.color}99`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = `${config.color}15`;
+            e.currentTarget.style.color = config.color;
+            e.currentTarget.style.borderColor = config.color;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(0,0,0,0)";
+            e.currentTarget.style.color = `${config.color}99`;
+            e.currentTarget.style.borderColor = `${config.color}55`;
+          }}
+        >
+          ↩ KEMBALI KE BERANDA
+        </button>
       </div>
 
       <style>{`
