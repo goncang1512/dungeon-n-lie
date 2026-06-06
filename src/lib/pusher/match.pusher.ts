@@ -103,6 +103,10 @@ export const handleTurnGame = (
   setValue("stage", data.data.stage);
   setValue("turn", data.data.turn);
   setValue("condition", { stage: null, success: false, choice: "" });
+
+  if (data.data.turn) {
+    setValue("lastTurn", data.data.turn);
+  }
 };
 
 export type TurnConditionType = {

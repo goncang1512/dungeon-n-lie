@@ -204,7 +204,10 @@ export function SystemLogPanel(): JSX.Element {
             (p) => p.userId !== eliminatedPlayer?.userId,
           );
 
-          const newTurn = getNextAliveTurn(turn, playersAfterElimination);
+          const { turn: freshTurn, lastTurn } = useEngine.getState();
+          const anchorTurn = freshTurn || lastTurn;
+          const newTurn = getNextAliveTurn(anchorTurn, playersAfterElimination);
+
           await nextTurn(nextStage, String(newTurn?.userId), String(params.id));
         }
 

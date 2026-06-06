@@ -29,6 +29,7 @@ export type EngineType = {
     name: string;
   };
   winner: "infiltrator" | "innocent" | null;
+  lastTurn: string | null;
 };
 
 export const useEngine = create<EngineType>((set) => ({
@@ -53,4 +54,5 @@ export const useEngine = create<EngineType>((set) => ({
   },
   sessionGame: null,
   winner: null,
+  lastTurn: null,
 }));
