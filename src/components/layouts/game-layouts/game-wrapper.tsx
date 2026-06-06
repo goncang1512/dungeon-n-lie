@@ -77,18 +77,10 @@ export function GameWrapper({
       const { turn: currentTurn, matchPlayer: currentPlayers } =
         useEngine.getState();
 
-      const isMyTurn = currentTurn === userId; // userId dari props GameWrapper
-
       const nextPlayer = getNextAliveTurn(currentTurn, currentPlayers);
       if (!nextPlayer) return;
 
-      handleTurnCondition(
-        data,
-        nextPlayer.userId,
-        String(params.id),
-        setValue,
-        isMyTurn, // ← pass flag ini
-      );
+      handleTurnCondition(data, setValue);
     };
 
     channel.bind("match-game", onTurnGame);

@@ -87,6 +87,7 @@ export default function GamePage({
 
     if (turn) {
       setValue("turn", turn);
+      setValue("lastTurn", turn);
     }
 
     if (userId) {

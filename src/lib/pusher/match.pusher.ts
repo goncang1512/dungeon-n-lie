@@ -1,5 +1,3 @@
-import { nextTurn } from "@/src/actions/game-match.action";
-import { getNextStage } from "@/src/components/layouts/game-layouts/game-layouts/story-line";
 import {
   ChatStoreType,
   PlayerMatch,
@@ -7,7 +5,6 @@ import {
 } from "@/src/store/chat.store";
 import { EngineType, useEngine } from "@/src/store/game.store";
 import Pusher from "pusher-js";
-import { startTransition } from "react";
 
 export const pusherClientMatch = new Pusher(
   process.env.NEXT_PUBLIC_KEY_PUSHER!,
@@ -120,30 +117,17 @@ export type TurnConditionType = {
 
 export const handleTurnCondition = (
   data: TurnConditionType,
-  user_id: string,
-  room_id: string,
   setValue: EngineType["setValue"],
-  shouldAdvance: boolean, // ← tambah parameter ini
 ) => {
   const conditionStage = useEngine.getState().condition;
 
+  // Hanya update UI — server yang advance turn
   setValue("condition", {
     ...conditionStage,
     stage: data.data.stage,
     success: data.data.success,
     choice: data.data.choice,
   });
-
-  // Hanya client yang punya turn saat ini yang panggil nextTurn
-  // Kalau semua client panggil, nextTurn akan dipanggil N kali
-  if (!shouldAdvance) return;
-
-  setTimeout(() => {
-    startTransition(async () => {
-      const nextStage = getNextStage(String(data.data.stage));
-      await nextTurn(nextStage, user_id, room_id);
-    });
-  }, 5000);
 };
 
 export const handleVoteTarget = (

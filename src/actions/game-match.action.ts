@@ -13,6 +13,7 @@ import { prisma } from "@/src/lib/prisma";
 import { MatchPlayer } from "../components/layouts/game-layouts/game-wrapper";
 import { pusher } from "../lib/pusher/pusher";
 import { EngineType } from "../store/game.store";
+import { getNextStage } from "../components/layouts/game-layouts/game-layouts/story-line";
 
 // ── Return type ───────────────────────────────────────────
 
@@ -92,20 +93,47 @@ export const nextTurn = async (
   });
 };
 
+// game-match.action.ts
 export const conditionStage = async (
   stage: string | null,
   success: boolean,
   room_id: string,
   choice: string,
 ) => {
+  // 1. Broadcast hasil roll ke semua client
   await pusher.trigger(`match-${room_id}`, "condition-game", {
-    room_id: room_id,
-    data: {
-      stage,
-      success,
-      choice,
+    room_id,
+    data: { stage, success, choice },
+  });
+
+  // 2. Hitung next turn di server — satu sumber kebenaran, tidak race condition
+  const match = await prisma.match.findFirst({
+    where: { room_id },
+    select: {
+      turn: true,
+      matchUsers: {
+        where: { status: "life" }, // hanya yang masih hidup
+        select: { userId: true },
+        orderBy: { created_at: "asc" },
+      },
     },
   });
+
+  if (!match) return;
+
+  const alivePlayers = match.matchUsers;
+  if (!alivePlayers.length) return;
+
+  const currentIndex = alivePlayers.findIndex((p) => p.userId === match.turn);
+  const nextIndex =
+    (currentIndex === -1 ? 0 : currentIndex + 1) % alivePlayers.length;
+  const nextUserId = alivePlayers[nextIndex].userId;
+  const nextStage = getNextStage(String(stage));
+
+  // 3. Tunggu 5 detik (sesuai delay di client), lalu advance
+  await new Promise((r) => setTimeout(r, 5000));
+
+  await nextTurn(nextStage, nextUserId, room_id);
 };
 
 export const voteTargetHandle = async (
