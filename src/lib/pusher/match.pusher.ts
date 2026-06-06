@@ -119,6 +119,7 @@ export const handleTurnCondition = (
   user_id: string,
   room_id: string,
   setValue: EngineType["setValue"],
+  shouldAdvance: boolean, // ← tambah parameter ini
 ) => {
   const conditionStage = useEngine.getState().condition;
 
@@ -129,12 +130,13 @@ export const handleTurnCondition = (
     choice: data.data.choice,
   });
 
+  // Hanya client yang punya turn saat ini yang panggil nextTurn
+  // Kalau semua client panggil, nextTurn akan dipanggil N kali
+  if (!shouldAdvance) return;
+
   setTimeout(() => {
     startTransition(async () => {
       const nextStage = getNextStage(String(data.data.stage));
-
-      console.log({ nextStage, data });
-
       await nextTurn(nextStage, user_id, room_id);
     });
   }, 5000);

@@ -72,14 +72,23 @@ export function GameWrapper({
 
     const onTurnGame = (data: HandleTurnGameType) =>
       handleTurnGame(data, setValue);
+    // GameWrapper — onConditionGame
     const onConditionGame = (data: TurnConditionType) => {
       const { turn: currentTurn, matchPlayer: currentPlayers } =
         useEngine.getState();
 
+      const isMyTurn = currentTurn === userId; // userId dari props GameWrapper
+
       const nextPlayer = getNextAliveTurn(currentTurn, currentPlayers);
       if (!nextPlayer) return;
 
-      handleTurnCondition(data, nextPlayer.userId, String(params.id), setValue);
+      handleTurnCondition(
+        data,
+        nextPlayer.userId,
+        String(params.id),
+        setValue,
+        isMyTurn, // ← pass flag ini
+      );
     };
 
     channel.bind("match-game", onTurnGame);
