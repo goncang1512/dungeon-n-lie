@@ -11,13 +11,17 @@ import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import GamePage from "@/src/components/layouts/game-layouts/gampe-page";
 import { MatchPlayer } from "@/src/components/layouts/game-layouts/game-wrapper";
+import { $Enums } from "@/generated/prisma/client";
 
 // ── Props dikirim ke client ───────────────────────────────
 
 export interface GamePageProps {
   matchUserId: string;
+  turn: string;
+  status: $Enums.PlayerStatus;
   userId: string;
   matchId: string;
+  stage: string | null;
   username: string;
   character: string; // User.character (CharUser enum)
   role:
@@ -78,6 +82,7 @@ export default async function GamePageServer({
       userId: true,
       matchId: true,
       role: true,
+      status: true,
       user: {
         select: {
           username: true,
@@ -95,6 +100,7 @@ export default async function GamePageServer({
     select: {
       userId: true,
       role: true,
+      status: true,
       user: {
         select: {
           username: true,
@@ -108,6 +114,7 @@ export default async function GamePageServer({
   const players: MatchPlayer[] = allMatchUsers.map((mu) => ({
     userId: mu.userId,
     displayName: mu.user.username,
+    status: mu.status,
     role: mu.role as MatchPlayer["role"],
     classId: mu.user.character as MatchPlayer["classId"],
   }));
@@ -130,8 +137,21 @@ export default async function GamePageServer({
     validity_in_seconds: 3600,
   });
 
+  const match = await prisma.match.findFirst({
+    where: {
+      room_id: id,
+    },
+    select: {
+      stage: true,
+      turn: true,
+    },
+  });
+
   const props: GamePageProps = {
+    stage: match?.stage ?? null,
+    turn: String(match?.turn),
     matchUserId: matchUser.id,
+    status: matchUser.status,
     userId: matchUser.userId,
     matchId: matchUser.matchId,
     username: matchUser.user.username,

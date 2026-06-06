@@ -76,6 +76,8 @@ model Match {
   user_id      String
   status       MatchStatus @default(waiting)
   roleAssigned Boolean     @default(false)
+  stage        String?
+  turn         String?
 
   user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   matchUsers MatchUser[]
@@ -90,11 +92,12 @@ enum MatchStatus {
 }
 
 model MatchUser {
-  id      String   @id @default(cuid())
+  id      String       @id @default(cuid())
   userId  String
   matchId String
-  ready   Boolean  @default(false)
-  role    UserRole @default(survivor)
+  ready   Boolean      @default(false)
+  role    UserRole     @default(survivor)
+  status  PlayerStatus @default(life)
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
@@ -103,6 +106,11 @@ model MatchUser {
   updated_at DateTime @updatedAt
 
   @@unique([userId, matchId])
+}
+
+enum PlayerStatus {
+  life
+  killed
 }
 
 enum UserRole {

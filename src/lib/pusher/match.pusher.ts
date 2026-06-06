@@ -91,7 +91,7 @@ export const handleUserReady = (
 export type HandleTurnGameType = {
   room_id: string;
   data: {
-    stage: string | number | null;
+    stage: string | null;
     turn: string;
   };
 };
@@ -102,14 +102,15 @@ export const handleTurnGame = (
 ) => {
   setValue("stage", data.data.stage);
   setValue("turn", data.data.turn);
-  setValue("condition", { stage: null, success: false });
+  setValue("condition", { stage: null, success: false, choice: "" });
 };
 
 export type TurnConditionType = {
   room_id: string;
   data: {
-    stage: number;
+    stage: string | null;
     success: boolean;
+    choice: string;
   };
 };
 
@@ -125,12 +126,25 @@ export const handleTurnCondition = (
     ...conditionStage,
     stage: data.data.stage,
     success: data.data.success,
+    choice: data.data.choice,
   });
 
   setTimeout(() => {
     startTransition(async () => {
-      const nextStage = getNextStage(data.data.stage);
+      const nextStage = getNextStage(String(data.data.stage));
+
+      console.log({ nextStage, data });
+
       await nextTurn(nextStage, user_id, room_id);
     });
   }, 5000);
+};
+
+export const handleVoteTarget = (
+  data: EngineType["voteTarget"],
+  setValue: EngineType["setValue"],
+) => {
+  // const currentVote = useEngine.getState().voteTarget;
+
+  setValue("voteTarget", data);
 };

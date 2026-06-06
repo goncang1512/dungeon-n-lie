@@ -1,13 +1,21 @@
 "use client";
 
-import { JSX, startTransition, useMemo, useState } from "react";
-import { useEngine } from "@/src/store/game.store";
+import { JSX, startTransition, useEffect, useMemo, useState } from "react";
+import { EngineType, useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
 import { getNextStage, STORY_LINE } from "./story-line";
 import { authClient } from "@/src/lib/auth/client";
 import { getClassById, Stats } from "@/src/types/classes";
-import { conditionStage, nextTurn } from "@/src/actions/game-match.action";
+import {
+  conditionStage,
+  nextTurn,
+  voteTargetHandle,
+} from "@/src/actions/game-match.action";
 import { useParams } from "next/navigation";
+import {
+  handleVoteTarget,
+  pusherClientMatch,
+} from "@/src/lib/pusher/match.pusher";
 
 export function SystemLogPanel(): JSX.Element {
   const { data } = authClient.useSession();
@@ -77,7 +85,12 @@ export function SystemLogPanel(): JSX.Element {
         setRolling(false);
 
         startTransition(async () => {
-          await conditionStage(stage, finalSuccess, String(params.id));
+          await conditionStage(
+            stage,
+            finalSuccess,
+            String(params.id),
+            String(pickCondition),
+          );
         });
       }
     }, 80);
@@ -86,6 +99,39 @@ export function SystemLogPanel(): JSX.Element {
   const isDiscussStage = useMemo(() => {
     return typeof stage === "string" && stage.startsWith("discuss");
   }, [stage]);
+
+  useEffect(() => {
+    if (!params.id) return;
+
+    const channelName = `match-${params.id}`;
+    const channel = pusherClientMatch.subscribe(channelName);
+
+    const onVoteTarget = (data: EngineType["voteTarget"]) => {
+      handleVoteTarget(data, setValue);
+    };
+
+    channel.bind("vote-game", onVoteTarget);
+
+    return () => {
+      channel.unbind("vote-game", onVoteTarget);
+      pusherClientMatch.unsubscribe(channelName);
+    };
+  }, [params.id]);
+
+  useEffect(() => {
+    if (voteTarget.length === matchPlayers.length) {
+      startTransition(async () => {
+        setTimeout(async () => {
+          await nextTurn(
+            getNextStage(stage as string),
+            turn,
+            String(params.id),
+          );
+          setValue("voteTarget", []);
+        }, 3000);
+      });
+    }
+  }, [voteTarget]);
 
   return (
     <div
@@ -109,13 +155,19 @@ export function SystemLogPanel(): JSX.Element {
                     (vote) => vote.voter !== voter,
                   );
 
-                  setValue("voteTarget", [
+                  const newVotes = [
                     ...filteredVotes,
                     {
                       voter,
                       target: player.userId,
                     },
-                  ]);
+                  ];
+
+                  setValue("voteTarget", newVotes);
+
+                  startTransition(async () => {
+                    await voteTargetHandle(String(params.id), newVotes);
+                  });
                 }}
                 className={`
           flex items-center justify-between
@@ -129,7 +181,22 @@ export function SystemLogPanel(): JSX.Element {
         `}
               >
                 <div className="flex flex-col items-start">
-                  <span className="text-stone-200">{player.displayName}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-stone-200">{player.displayName}</span>
+
+                    <div className="flex items-center gap-1 ">
+                      {Array.from({
+                        length: voteTarget.filter(
+                          (item) => item.target === player.userId,
+                        ).length,
+                      }).map((_, index) => (
+                        <div
+                          className="size-2 rounded-full bg-red-500"
+                          key={index}
+                        ></div>
+                      ))}
+                    </div>
+                  </div>
 
                   <span className="text-xs text-stone-500">
                     {player.classId}
@@ -149,6 +216,7 @@ export function SystemLogPanel(): JSX.Element {
 
               return (
                 <button
+                  disabled={data?.user.id !== turn}
                   key={row.id}
                   onClick={() => setValue("pickCondition", row.id)}
                   className={`
@@ -255,14 +323,27 @@ export function SystemLogPanel(): JSX.Element {
             </div>
 
             <button
-              onClick={async () => {
-                await nextTurn(
-                  getNextStage(stage as number | string),
-                  turn,
-                  String(params.id),
+              onClick={() => {
+                const voter = String(data?.user?.id);
+
+                const filteredVotes = voteTarget.filter(
+                  (vote) => vote.voter !== voter,
                 );
+
+                const newVotes = [
+                  ...filteredVotes,
+                  {
+                    voter,
+                    target: "not",
+                  },
+                ];
+
+                setValue("voteTarget", newVotes);
+
+                startTransition(async () => {
+                  await voteTargetHandle(String(params.id), newVotes);
+                });
               }}
-              disabled={data?.user.id !== turn}
               className="
           px-6 py-3 rounded-md
           bg-green-600 hover:bg-green-500
@@ -273,6 +354,17 @@ export function SystemLogPanel(): JSX.Element {
             >
               NEXT STAGE
             </button>
+            <div className="flex items-center gap-1 ">
+              {Array.from({
+                length: voteTarget.filter((item) => item.target === "not")
+                  .length,
+              }).map((_, index) => (
+                <div
+                  className="size-2 rounded-full bg-red-500"
+                  key={index}
+                ></div>
+              ))}
+            </div>
           </>
         ) : (
           <>

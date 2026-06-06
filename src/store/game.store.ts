@@ -7,18 +7,20 @@ export type EngineType = {
     value: EngineType[T],
   ) => void;
   turn: string;
-  stage: number | null | string;
+  stage: null | string;
   discuss: boolean;
   matchPlayer: MatchPlayer[];
   pickCondition: string;
   condition: {
-    stage: number | string | null;
+    stage: string | null;
     success: boolean;
+    choice: string;
   };
   voteTarget: {
     voter: string;
     target: string;
   }[];
+  state: string;
 };
 
 export const useEngine = create<EngineType>((set) => ({
@@ -31,6 +33,8 @@ export const useEngine = create<EngineType>((set) => ({
   condition: {
     stage: null,
     success: false,
+    choice: "",
   },
   voteTarget: [],
+  state: "",
 }));

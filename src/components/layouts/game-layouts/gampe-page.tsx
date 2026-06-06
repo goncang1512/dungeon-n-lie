@@ -26,6 +26,8 @@ export default function GamePage({
   players,
   streamToken,
   apiKey,
+  stage,
+  turn,
 }: GamePageProps): JSX.Element {
   const { setValue } = useEngine(
     useShallow((state) => ({ setValue: state.setValue })),
@@ -78,7 +80,15 @@ export default function GamePage({
     if (players) {
       setValue("matchPlayer", players);
     }
-  }, [players]);
+
+    if (stage) {
+      setValue("stage", stage);
+    }
+
+    if (turn) {
+      setValue("turn", turn);
+    }
+  }, [players, stage, turn]);
 
   if (error) {
     return (

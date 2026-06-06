@@ -6,8 +6,10 @@ import {
   SfuModels,
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
-import { JSX } from "react";
+import { JSX, useMemo } from "react";
 import { ROLE_META, UserRole } from "../game-layouts/init-game";
+import { useEngine } from "@/src/store/game.store";
+import { useShallow } from "zustand/shallow";
 
 type StreamParticipant = ReturnType<
   ReturnType<typeof useCallStateHooks>["useParticipants"]
@@ -18,14 +20,19 @@ export function VideoTile({
   slotIndex,
   isSelf,
   selfRole,
+  userId,
 }: {
   participant: StreamParticipant;
   slotIndex: number;
   isSelf: boolean;
   selfRole?: UserRole;
+  userId: string;
 }): JSX.Element {
   const name =
     participant.name ?? participant.userId ?? `PLAYER ${slotIndex + 1}`;
+  const { turn, stage } = useEngine(
+    useShallow((state) => ({ turn: state.turn, stage: state.stage })),
+  );
 
   // FIX: Gunakan publishedTracks bukan videoStream/audioStream langsung.
   // videoStream bisa null walau kamera aktif karena belum di-subscribe.
@@ -39,14 +46,28 @@ export function VideoTile({
 
   const roleMeta = selfRole ? ROLE_META[selfRole] : null;
 
+  const borderStyle = useMemo(() => {
+    if (stage?.startsWith("discuss")) {
+      return "1px solid rgba(41,37,36,0.55)";
+    }
+
+    if (turn === userId) {
+      return "3px solid rgba(34,197,94,0.8)";
+    }
+
+    if (isSelf) {
+      return "1px solid rgba(245,158,11,0.65)";
+    }
+
+    return "1px solid rgba(41,37,36,0.55)";
+  }, [turn, userId, isSelf, stage]);
+
   return (
     <div
       className="relative flex flex-col overflow-hidden"
       style={{
         background: "#080503",
-        border: isSelf
-          ? "1px solid rgba(245,158,11,0.65)"
-          : "1px solid rgba(41,37,36,0.55)",
+        border: borderStyle,
         boxShadow: isSelf ? "0 0 14px rgba(245,158,11,0.15)" : "none",
       }}
     >

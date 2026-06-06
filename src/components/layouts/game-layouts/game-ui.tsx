@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, JSX, startTransition } from "react";
+import { useState, useEffect, JSX, startTransition, useMemo } from "react";
 import { useCallStateHooks } from "@stream-io/video-react-sdk";
 
 import { DungeonBackground } from "@/src/components/layouts/game-layouts/background-game";
@@ -13,21 +13,14 @@ import {
   ROLE_META,
   PHASE_LABELS,
   PHASE_COLORS,
-  OverlayTab,
 } from "./game-layouts/init-game";
-import { useGame } from "./game-layouts/game-state";
-import {
-  OverlayStory,
-  OverlayDice,
-  OverlayInfiltrator,
-  OverlayVote,
-} from "./game-layouts/overlay";
 import { useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
 import { STORY_LINE } from "./game-layouts/story-line";
 import { useParams } from "next/navigation";
 import { nextTurn } from "@/src/actions/game-match.action";
 import { SystemLogPanel } from "./game-layouts/log-game";
+import { useGame } from "./game-layouts/game-state";
 
 function fmt(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -192,13 +185,27 @@ function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
     const newJourney = () => {
       setTimeout(() => {
         startTransition(async () => {
-          await nextTurn(1, matchPlayer[0].userId, String(params.id));
+          await nextTurn("1", matchPlayer[0].userId, String(params.id));
         });
       }, 5000);
     };
 
-    newJourney();
-  }, []);
+    if (stage === null) {
+      newJourney();
+    }
+  }, [stage]);
+
+  const storyCondition = useMemo(() => {
+    const res = STORY_LINE.stages
+      .find((item) => item.id === condition.stage)
+      ?.choices?.find((choice) => choice.id === condition.choice);
+
+    if (condition.success) {
+      return res?.success.story;
+    } else {
+      return res?.failure.story;
+    }
+  }, [condition]);
 
   return (
     <div
@@ -231,17 +238,30 @@ function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
 
       {/* Narrative text */}
       {condition.stage !== null ? (
-        <p
-          className="text-center leading-relaxed italic max-w-md"
-          style={{
-            fontFamily: "monospace",
-            fontSize: 30,
-            color: "#e7e5e4",
-            textShadow: "0 1px 12px rgba(0,0,0,1)",
-          }}
-        >
-          {condition.success ? "SUCCESS" : "FAILED"}
-        </p>
+        <div>
+          <p
+            className="text-center leading-relaxed italic max-w-md"
+            style={{
+              fontFamily: "monospace",
+              fontSize: 30,
+              color: "#e7e5e4",
+              textShadow: "0 1px 12px rgba(0,0,0,1)",
+            }}
+          >
+            {condition.success ? "SUCCESS" : "FAILED"}
+          </p>
+          <p
+            className="text-center leading-relaxed italic max-w-md"
+            style={{
+              fontFamily: "monospace",
+              fontSize: 16,
+              color: "#e7e5e4",
+              textShadow: "0 1px 12px rgba(0,0,0,1)",
+            }}
+          >
+            {storyCondition}
+          </p>
+        </div>
       ) : (
         <p
           className="text-center leading-relaxed italic max-w-md"
@@ -271,87 +291,6 @@ function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
   );
 }
 
-const OVERLAY_TITLES: Record<NonNullable<OverlayTab>, string> = {
-  story: "◈ NARASI & PETUNJUK",
-  dice: "◈ SKILL CHECK — D20",
-  infiltrator: "⚠ PANEL INFILTRATOR",
-  vote: "◈ FASE VOTING",
-};
-const OVERLAY_COLORS: Record<NonNullable<OverlayTab>, string> = {
-  story: "#60a5fa",
-  dice: "#d97706",
-  infiltrator: "#f87171",
-  vote: "#fbbf24",
-};
-
-function FeatureOverlay(): JSX.Element | null {
-  const { state, toggleTab } = useGame();
-  const tab = state.activeTab;
-  if (!tab) return null;
-
-  return (
-    <>
-      <style>{`@keyframes oslide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <div
-        className="absolute inset-0 flex flex-col"
-        style={{
-          background: "rgba(4,3,2,0.97)",
-          zIndex: 5,
-          overflow: "hidden",
-          animation: "oslide .2s ease-out",
-        }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-4 py-2 border-b shrink-0"
-          style={{
-            borderBottomColor: "rgba(41,37,36,0.6)",
-            background: "rgba(0,0,0,0.5)",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontSize: 10,
-              letterSpacing: "0.2em",
-              color: OVERLAY_COLORS[tab],
-            }}
-          >
-            {OVERLAY_TITLES[tab]}
-          </span>
-          <button
-            onClick={() => toggleTab(tab)}
-            style={{
-              fontFamily: "monospace",
-              fontSize: 10,
-              color: "#57534e",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            [TUTUP ×]
-          </button>
-        </div>
-
-        {/* Content */}
-        <div
-          className="flex-1 overflow-y-auto p-3"
-          style={{
-            scrollbarWidth: "thin",
-            scrollbarColor: "#292524 transparent",
-          }}
-        >
-          {tab === "story" && <OverlayStory />}
-          {tab === "dice" && <OverlayDice />}
-          {tab === "infiltrator" && <OverlayInfiltrator />}
-          {tab === "vote" && <OverlayVote />}
-        </div>
-      </div>
-    </>
-  );
-}
-
 function CenterPanel({ glitch }: { glitch: boolean }): JSX.Element {
   return (
     <div
@@ -365,130 +304,13 @@ function CenterPanel({ glitch }: { glitch: boolean }): JSX.Element {
     >
       <NarrativePanel glitch={glitch} />
       <SystemLogPanel />
-      <FeatureOverlay />
-    </div>
-  );
-}
-
-function ActionButtons(): JSX.Element {
-  const { state, isInfiltrator, isCatalyst, toggleTab, advancePhase } =
-    useGame();
-
-  type Btn = {
-    label: string;
-    tab: OverlayTab;
-    danger?: boolean;
-    passive?: boolean;
-  };
-
-  const map: Record<string, Btn[]> = {
-    exploration: [
-      { label: "INVESTIGATE", tab: "story" },
-      { label: "ROLL CHECK", tab: "dice" },
-      { label: "WAIT", tab: null, passive: true },
-    ],
-    secret_action:
-      isInfiltrator || isCatalyst
-        ? [
-            { label: "SECRET ACTION", tab: "infiltrator", danger: true },
-            { label: "INVESTIGATE", tab: "story" },
-            { label: "WAIT", tab: null, passive: true },
-          ]
-        : [
-            { label: "INVESTIGATE", tab: "story" },
-            { label: "ROLL CHECK", tab: "dice" },
-            { label: "PROTECT", tab: null, passive: true },
-            { label: "WAIT", tab: null, passive: true },
-          ],
-    discussion: [
-      { label: "INVESTIGATE", tab: "story" },
-      { label: "PROTECT", tab: null, passive: true },
-      { label: "ACCUSE", tab: "vote", danger: true },
-      { label: "WAIT", tab: null, passive: true },
-    ],
-    voting: [
-      { label: "VOTE NOW", tab: "vote", danger: true },
-      { label: "INVESTIGATE", tab: "story" },
-      { label: "WAIT", tab: null, passive: true },
-    ],
-    trial: [
-      { label: "SIDANG", tab: "vote", danger: true },
-      { label: "PERSUASION", tab: "dice" },
-    ],
-    resolution: [{ label: "HASIL RONDE", tab: "vote" }],
-  };
-
-  const btns = map[state.phase] ?? map.exploration;
-
-  return (
-    <div className="flex gap-2 flex-1 justify-center">
-      {btns.map(({ label, tab, danger, passive }, i) => {
-        const isActive = tab !== null && state.activeTab === tab;
-        const borderColor = isActive
-          ? danger
-            ? "#f87171"
-            : "#d97706"
-          : danger
-            ? "rgba(248,113,113,0.55)"
-            : passive
-              ? "rgba(41,37,36,0.4)"
-              : "rgba(87,83,78,0.6)";
-        const color = isActive
-          ? danger
-            ? "#f87171"
-            : "#d97706"
-          : danger
-            ? "#ef4444"
-            : passive
-              ? "#44403c"
-              : "#a8a29e";
-
-        return (
-          <button
-            key={i}
-            onClick={() => tab && toggleTab(tab)}
-            disabled={passive}
-            className="px-5 py-1.5 text-xs tracking-widest font-bold border transition-all duration-150"
-            style={{
-              fontFamily: "monospace",
-              borderColor,
-              color,
-              background: isActive
-                ? danger
-                  ? "rgba(248,113,113,0.08)"
-                  : "rgba(217,119,6,0.08)"
-                : "transparent",
-              cursor: passive ? "default" : "pointer",
-              opacity: passive ? 0.4 : 1,
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-
-      {/* NEXT PHASE button (DM control) */}
-      <button
-        onClick={advancePhase}
-        className="px-3 py-1.5 text-[9px] tracking-widest border transition-all duration-150"
-        style={{
-          fontFamily: "monospace",
-          borderColor: "rgba(41,37,36,0.4)",
-          color: "#44403c",
-          background: "transparent",
-          cursor: "pointer",
-          marginLeft: 8,
-        }}
-      >
-        NEXT ›
-      </button>
     </div>
   );
 }
 
 function EndgameOverlay(): JSX.Element {
-  const { state } = useGame();
-  const heroWin = state.winner === "hero";
+  const { state } = useEngine(useShallow((state) => ({ state: state.state })));
+  const heroWin = state === "hero";
   const color = heroWin ? "#4ade80" : "#f87171";
 
   return (
@@ -547,8 +369,8 @@ export function GameUI({
 }): JSX.Element {
   const { useParticipants } = useCallStateHooks();
   const participants = useParticipants();
+  const { state } = useEngine(useShallow((state) => ({ state: state.state })));
 
-  const { state } = useGame();
   const [glitch, setGlitch] = useState(false);
 
   useEffect(() => {
@@ -559,7 +381,7 @@ export function GameUI({
     return () => clearInterval(id);
   }, []);
 
-  if (state.blackoutActive) {
+  if (state === "blockout") {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center"
@@ -588,6 +410,7 @@ export function GameUI({
       return (
         <VideoTile
           key={p.sessionId}
+          userId={p.userId}
           participant={p}
           slotIndex={slotIdx}
           isSelf={isSelf}
@@ -651,7 +474,7 @@ export function GameUI({
       )}
 
       {/* Endgame */}
-      {state.phase === "endgame" && <EndgameOverlay />}
+      {state === "endgame" && <EndgameOverlay />}
 
       {/* ── MAIN LAYOUT ── */}
       <div className="absolute inset-0 flex flex-col" style={{ zIndex: 2 }}>
@@ -682,7 +505,7 @@ export function GameUI({
 
         {/* 3. Bottom action bar */}
         <div
-          className="flex items-center gap-3 border-t shrink-0"
+          className="flex items-center justify-between gap-3 border-t shrink-0"
           style={{
             background: "rgba(4,3,2,0.94)",
             backdropFilter: "blur(12px)",
@@ -691,7 +514,6 @@ export function GameUI({
           }}
         >
           <CallControls />
-          <ActionButtons />
           <div className="flex gap-1.5">
             {["»", "«"].map((s, i) => (
               <button
@@ -707,22 +529,6 @@ export function GameUI({
               </button>
             ))}
           </div>
-        </div>
-
-        {/* 4. Status strip */}
-        <div
-          className={`px-4 py-1 text-[10px] border-t transition-opacity duration-200 ${glitch ? "opacity-20" : ""}`}
-          style={{
-            background: "rgba(0,0,0,0.94)",
-            borderTopColor: "rgba(41,37,36,0.4)",
-            fontFamily: "monospace",
-          }}
-        >
-          <span style={{ color: "#44403c" }}>SYS › </span>
-          <span style={{ color: "#57534e" }}>
-            {state.systemLog[state.systemLog.length - 1]?.text ??
-              "Koneksi stabil. Menunggu tindakan pemain..."}
-          </span>
         </div>
       </div>
     </div>

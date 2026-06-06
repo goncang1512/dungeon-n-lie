@@ -7,7 +7,7 @@ export const STORY_LINE = {
   },
   stages: [
     {
-      id: 1,
+      id: "1",
       title: "The Sealed Gate",
       story:
         "Kelompok tiba di gerbang batu raksasa yang menutup pintu masuk dungeon. Simbol-simbol kuno bersinar redup di permukaannya.",
@@ -72,7 +72,7 @@ export const STORY_LINE = {
       ],
     },
     {
-      id: 2,
+      id: "2",
       title: "Hall of Echoes",
       story:
         "Lorong panjang dipenuhi suara bisikan yang seolah mengetahui rahasia setiap petualang.",
@@ -152,7 +152,7 @@ export const STORY_LINE = {
       ],
     },
     {
-      id: 3,
+      id: "3",
       title: "The Forgotten Crypt",
       story:
         "Sebuah ruang pemakaman kuno dipenuhi peti mati batu dan patung penjaga.",
@@ -214,7 +214,7 @@ export const STORY_LINE = {
       ],
     },
     {
-      id: 4,
+      id: "4",
       title: "The Abyss Library",
       story:
         "Perpustakaan kuno berisi ribuan buku sihir yang hampir hancur oleh waktu.",
@@ -293,7 +293,7 @@ export const STORY_LINE = {
       ],
     },
     {
-      id: 5,
+      id: "5",
       title: "Heart Chamber",
       story:
         "Kelompok akhirnya mencapai ruang terakhir tempat Heart of Eternity disegel.",
@@ -357,7 +357,7 @@ export const STORY_LINE = {
   ],
 };
 
-export const getNextStage = (currentStage: string | number) => {
+export const getNextStage = (currentStage: string) => {
   const currentIndex = STORY_LINE.stages.findIndex(
     (s) => s.id === currentStage,
   );

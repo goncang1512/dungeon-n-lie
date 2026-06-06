@@ -18,6 +18,7 @@ import {
 } from "@/src/lib/pusher/match.pusher";
 import { useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
+import { $Enums } from "@/generated/prisma/client";
 
 const getPlayerTurn = (stage: number, players: MatchPlayer[]) => {
   if (!players.length) return null;
@@ -40,6 +41,7 @@ export interface MatchPlayer {
     | "infiltrator"
     | "catalyst";
   classId: DndClassId;
+  status: $Enums.PlayerStatus;
 }
 
 // ── Props ─────────────────────────────────────────────────
@@ -61,12 +63,10 @@ export function GameWrapper({
   timeLimit = 300,
 }: GameWrapperProps): JSX.Element {
   const params = useParams();
-  const { setValue, matchPlayer, turn, stage } = useEngine(
+  const { setValue, matchPlayer } = useEngine(
     useShallow((state) => ({
       setValue: state.setValue,
       matchPlayer: state.matchPlayer,
-      turn: state.turn,
-      stage: state.stage,
     })),
   );
   const initialState = useMemo(
@@ -74,11 +74,7 @@ export function GameWrapper({
     [],
   );
 
-  console.log({ turn, stage });
-
   useEffect(() => {
-    console.log({ matchPlayer, userOne: matchPlayer[1] });
-
     if (!params.id) return;
 
     const channelName = `match-${params.id}`;
@@ -87,14 +83,6 @@ export function GameWrapper({
     const onTurnGame = (data: HandleTurnGameType) =>
       handleTurnGame(data, setValue);
     const onConditionGame = (data: TurnConditionType) => {
-      console.log({
-        data,
-        matchPlayer,
-        turn,
-        turnStage: data.data.stage,
-        nextTurn: matchPlayer[Number(data.data.stage) + 1],
-      });
-
       const nextPlayer = getPlayerTurn(
         Number(data.data.stage) + 1,
         matchPlayer,

@@ -12,6 +12,7 @@
 import { prisma } from "@/src/lib/prisma";
 import { MatchPlayer } from "../components/layouts/game-layouts/game-wrapper";
 import { pusher } from "../lib/pusher/pusher";
+import { EngineType } from "../store/game.store";
 
 // ── Return type ───────────────────────────────────────────
 
@@ -53,6 +54,7 @@ export async function getMatchPlayers(
     // sehingga tidak perlu konversi manual.
     const players: MatchPlayer[] = matchUsers.map((mu) => ({
       userId: mu.userId,
+      status: mu.status,
       displayName: mu.user.username,
       role: mu.role as MatchPlayer["role"],
       classId: mu.user.character as MatchPlayer["classId"],
@@ -67,10 +69,20 @@ export async function getMatchPlayers(
 }
 
 export const nextTurn = async (
-  stage: string | number | null,
+  stage: string | null,
   userId: string,
   room_id: string,
 ) => {
+  await prisma.match.update({
+    where: {
+      room_id,
+    },
+    data: {
+      stage: String(stage),
+      turn: userId,
+    },
+  });
+
   await pusher.trigger(`match-${room_id}`, "match-game", {
     room_id: room_id,
     data: {
@@ -81,15 +93,24 @@ export const nextTurn = async (
 };
 
 export const conditionStage = async (
-  stage: string | number | null,
+  stage: string | null,
   success: boolean,
   room_id: string,
+  choice: string,
 ) => {
   await pusher.trigger(`match-${room_id}`, "condition-game", {
     room_id: room_id,
     data: {
       stage,
       success,
+      choice,
     },
   });
+};
+
+export const voteTargetHandle = async (
+  room_id: string,
+  voteTarget: EngineType["voteTarget"],
+) => {
+  await pusher.trigger(`match-${room_id}`, "vote-game", voteTarget);
 };
