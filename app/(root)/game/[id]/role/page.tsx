@@ -10,14 +10,14 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const ROLE_POOL: UserRole[] = [
-  "survivor",
+// Role opsional — urutan prioritas dari kiri ke kanan
+const OPTIONAL_ROLES: UserRole[] = [
   "survivor",
   "observer",
   "guardian",
   "analyst",
-  "infiltrator",
   "catalyst",
+  "survivor", // survivor kedua untuk game 7 player
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -30,15 +30,37 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Hanya jalankan distribute jika roleAssigned masih false.
- * Pakai updateMany dengan WHERE roleAssigned=false sebagai atomic check-and-set
- * supaya hanya SATU request yang berhasil distribute — sisanya skip otomatis.
+ * Bangun pool role dengan jaminan:
+ * - Selalu ada tepat 1 infiltrator
+ * - Tidak ada duplikasi kecuali survivor
+ * - Jumlah role = playerCount
+ */
+function buildRolePool(playerCount: number): UserRole[] {
+  // Wajib: 1 infiltrator
+  const pool: UserRole[] = ["infiltrator"];
+
+  // Sisa slot diisi dari optional secara berurutan
+  const remaining = playerCount - 1;
+  const fillers = OPTIONAL_ROLES.slice(0, remaining);
+
+  // Kalau player lebih dari slot optional, tambah survivor
+  while (fillers.length < remaining) {
+    fillers.push("survivor");
+  }
+
+  return shuffle([...pool, ...fillers]);
+}
+
+/**
+ * Distribute roles atomically.
+ * Hanya 1 client yang jadi distributor via atomic updateMany WHERE roleAssigned=false.
+ * Client lain polling sampai role tersedia.
  */
 async function distributeRoles(
   matchId: string,
   userId: string,
 ): Promise<{ role: UserRole }> {
-  // ── Cek cepat: sudah assigned? Return langsung tanpa transaksi ──────────
+  // Cek cepat apakah sudah pernah di-assign
   const match = await prisma.match.findUnique({
     where: { id: matchId },
     select: { roleAssigned: true },
@@ -47,53 +69,7 @@ async function distributeRoles(
   if (!match) throw new Error("Match not found");
 
   if (match.roleAssigned) {
-    // Sudah pernah di-distribute — ambil role user ini
-    const mu = await prisma.matchUser.findUnique({
-      where: { userId_matchId: { userId, matchId } },
-      select: { role: true },
-    });
-    return { role: mu!.role };
-  }
-
-  // ── Coba jadi "distributor" dengan atomic update ────────────────────────
-  // updateMany hanya update jika roleAssigned masih false.
-  // Kalau ada 6 request bersamaan, hanya 1 yang berhasil (count = 1),
-  // sisanya dapat count = 0 dan langsung masuk jalur "tunggu".
-  const claim = await prisma.match.updateMany({
-    where: {
-      id: matchId,
-      roleAssigned: false, // ← atomic check: hanya update kalau masih false
-    },
-    data: {
-      roleAssigned: true, // ← langsung set true sebelum assign role
-    },
-  });
-
-  if (claim.count === 0) {
-    // Request lain sudah lebih dulu claim → tunggu sampai role tersedia
-    // Polling max 10 detik (20x × 500ms)
-    for (let attempt = 0; attempt < 20; attempt++) {
-      await new Promise((r) => setTimeout(r, 500));
-
-      const mu = await prisma.matchUser.findUnique({
-        where: { userId_matchId: { userId, matchId } },
-        select: { role: true },
-      });
-
-      // Role sudah di-assign oleh distributor → return
-      // Kita cek dengan cara sederhana: role != survivor default
-      // Tapi lebih aman cek match.roleAssigned lagi
-      const m = await prisma.match.findUnique({
-        where: { id: matchId },
-        select: { roleAssigned: true },
-      });
-
-      if (m?.roleAssigned && mu) {
-        return { role: mu.role };
-      }
-    }
-
-    // Timeout — fallback ambil role apapun yang ada
+    // Sudah di-assign sebelumnya — ambil role user ini langsung
     const mu = await prisma.matchUser.findUnique({
       where: { userId_matchId: { userId, matchId } },
       select: { role: true },
@@ -101,31 +77,64 @@ async function distributeRoles(
     return { role: mu?.role ?? "survivor" };
   }
 
-  // ── Kita adalah distributor — assign semua role sekaligus ───────────────
+  // Coba jadi distributor dengan atomic update
+  // Hanya 1 dari N concurrent request yang berhasil (count = 1)
+  const claim = await prisma.match.updateMany({
+    where: {
+      id: matchId,
+      roleAssigned: false, // atomic guard
+    },
+    data: {
+      roleAssigned: true,
+    },
+  });
+
+  if (claim.count === 0) {
+    // Request lain sudah claim duluan — polling sampai role tersedia
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await new Promise((r) => setTimeout(r, 500));
+
+      const [mu, m] = await Promise.all([
+        prisma.matchUser.findUnique({
+          where: { userId_matchId: { userId, matchId } },
+          select: { role: true },
+        }),
+        prisma.match.findUnique({
+          where: { id: matchId },
+          select: { roleAssigned: true },
+        }),
+      ]);
+
+      if (m?.roleAssigned && mu?.role) {
+        return { role: mu.role };
+      }
+    }
+
+    // Timeout fallback
+    const mu = await prisma.matchUser.findUnique({
+      where: { userId_matchId: { userId, matchId } },
+      select: { role: true },
+    });
+    return { role: mu?.role ?? "survivor" };
+  }
+
+  // ── Kita adalah distributor ────────────────────────────────────────────
   const matchUsers = await prisma.matchUser.findMany({
     where: { matchId },
     orderBy: { created_at: "asc" },
     select: { id: true, userId: true },
   });
 
-  // Sesuaikan pool dengan jumlah player
   const playerCount = matchUsers.length;
-  const pool = [...ROLE_POOL];
+  const shuffled = buildRolePool(playerCount);
 
-  if (playerCount < pool.length) {
-    while (pool.length > playerCount) {
-      const idx = [...pool].reverse().findIndex((r) => r !== "infiltrator");
-      if (idx === -1) break;
-      pool.splice(pool.length - 1 - idx, 1);
-    }
-  } else {
-    while (pool.length < playerCount) pool.push("survivor");
-  }
+  console.log(
+    `[ROLES] distributing ${playerCount} roles:`,
+    shuffled.join(", "),
+  );
 
-  const shuffled = shuffle(pool);
-
-  // Update semua MatchUser — pakai Promise.all supaya paralel & cepat
   let myRole: UserRole = "survivor";
+
   await Promise.all(
     matchUsers.map((mu, i) => {
       if (mu.userId === userId) myRole = shuffled[i];

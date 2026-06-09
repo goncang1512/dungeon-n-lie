@@ -30,10 +30,10 @@ export type EngineType = {
   };
   winner: "infiltrator" | "innocent" | null;
   lastTurn: string | null;
+  resetEngine: () => void;
 };
 
-export const useEngine = create<EngineType>((set) => ({
-  setValue: (key, value) => set(() => ({ [key]: value })),
+const initialState = {
   turn: "",
   stage: null,
   discuss: false,
@@ -53,6 +53,12 @@ export const useEngine = create<EngineType>((set) => ({
     name: "",
   },
   sessionGame: null,
-  winner: null,
   lastTurn: null,
+  winner: null,
+};
+
+export const useEngine = create<EngineType>((set) => ({
+  setValue: (key, value) => set(() => ({ [key]: value })),
+  resetEngine: () => set(() => initialState),
+  ...initialState,
 }));

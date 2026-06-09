@@ -123,15 +123,14 @@ export const conditionStage = async (
 
   const nextStage = getNextStage(String(stage));
   const isCurrentDiscuss = String(stage).startsWith("discuss");
+  const isCurrentNight = String(stage).startsWith("night");
 
   let nextUserId: string;
 
-  if (isCurrentDiscuss) {
+  if (isCurrentDiscuss || isCurrentNight) {
     // Keluar dari discuss → pakai turn yang sudah tersimpan di DB, jangan rotasi
     nextUserId =
       match.turn && match.turn.length > 0 ? match.turn : alivePlayers[0].userId;
-
-    console.log(`[TURN] discuss → stage | FREEZE turn tetap: ${nextUserId}`);
   } else {
     // Normal stage → rotasi ke player berikutnya
     // (berlaku juga saat masuk ke discuss)
@@ -139,13 +138,7 @@ export const conditionStage = async (
     const nextIndex =
       (currentIndex === -1 ? 0 : currentIndex + 1) % alivePlayers.length;
     nextUserId = alivePlayers[nextIndex].userId;
-
-    console.log(
-      `[TURN] stage "${stage}" → "${nextStage}" | rotasi: ${match.turn} (idx ${currentIndex}) → ${nextUserId} (idx ${nextIndex}) | alive: [${alivePlayers.map((p) => p.userId).join(", ")}]`,
-    );
   }
-
-  await new Promise((r) => setTimeout(r, 5000));
 
   await nextTurn(nextStage, nextUserId, room_id);
 };
@@ -207,4 +200,85 @@ export const triggerEndGame = async (
   });
 
   await pusher.trigger(`match-${room_id}`, "end-game", payload);
+};
+
+// game-match.action.ts
+export const infiltratorKill = async (
+  targetUserId: string | null,
+  room_id: string,
+) => {
+  if (targetUserId) {
+    await prisma.matchUser.updateMany({
+      where: { userId: targetUserId, match: { room_id } },
+      data: { status: "killed" },
+    });
+
+    const target = await prisma.matchUser.findFirst({
+      where: { userId: targetUserId, match: { room_id } },
+      select: {
+        role: true,
+        user: { select: { username: true, character: true } },
+      },
+    });
+
+    await pusher.trigger(`match-${room_id}`, "eliminated-vote", {
+      userId: targetUserId,
+      role: target?.role ?? "",
+      name: target?.user.username ?? "",
+      character: target?.user.character ?? "",
+    });
+  }
+
+  await pusher.trigger(`match-${room_id}`, "infiltrator-kill", {
+    userId: targetUserId,
+  });
+
+  // Cek end game langsung di sini — jangan tunggu client
+  const match = await prisma.match.findFirst({
+    where: { room_id },
+    select: {
+      stage: true,
+      turn: true,
+      matchUsers: {
+        select: { userId: true, status: true, role: true },
+      },
+    },
+  });
+
+  if (!match) return;
+
+  const alivePlayers = match.matchUsers.filter((p) => p.status === "life");
+  const aliveInnocents = alivePlayers.filter((p) => p.role !== "infiltrator");
+  const aliveInfiltrator = alivePlayers.find((p) => p.role === "infiltrator");
+
+  // Infiltrator menang jika tidak ada innocent yang tersisa
+  if (aliveInnocents.length === 0 && aliveInfiltrator) {
+    console.log(`[END GAME] infiltrator menang — last_man`);
+    await triggerEndGame(
+      { winner: "infiltrator", reason: "last_man" },
+      room_id,
+    );
+    return;
+  }
+
+  // Infiltrator kalah jika tidak ada lagi
+  if (!aliveInfiltrator) {
+    console.log(`[END GAME] innocent menang — infiltrator mati`);
+    await triggerEndGame({ winner: "innocent", reason: "last_man" }, room_id);
+    return;
+  }
+
+  // Belum end game — lanjut ke stage berikutnya
+  const nextStage = getNextStage(String(match.stage));
+
+  console.log(
+    `[NIGHT] infiltrator kill: ${targetUserId ?? "skip"} | ${match.stage} → ${nextStage}`,
+  );
+
+  await nextTurn(nextStage, match.turn ?? "", room_id);
+};
+
+// infiltratorSkip cukup panggil infiltratorKill dengan null
+export const infiltratorSkip = async (room_id: string) => {
+  await infiltratorKill(null, room_id);
 };

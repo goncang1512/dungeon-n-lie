@@ -1,9 +1,5 @@
 "use client";
 
-// game-wrapper.tsx
-// Menerima players[] langsung dari server — tidak ada fetch di sini.
-// Buat initialState lalu render GameProvider + GameUI.
-
 import { useMemo, JSX, useEffect } from "react";
 import { GameProvider, createInitialState } from "./game-layouts/game-state";
 import { GameUI } from "./game-ui";
@@ -19,6 +15,8 @@ import {
 import { useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
 import { $Enums } from "@/generated/prisma/client";
+import { EndGamePayload } from "@/src/actions/game-match.action";
+import { handleEndGameEvent } from "./game-layouts/end-game-handle";
 
 export interface MatchPlayer {
   userId: string;
@@ -71,17 +69,21 @@ export function GameWrapper({
 
     const onTurnGame = (data: HandleTurnGameType) =>
       handleTurnGame(data, setValue);
-    // GameWrapper — onConditionGame
     const onConditionGame = (data: TurnConditionType) => {
       handleTurnCondition(data, setValue);
+    };
+    const onEndGame = (data: EndGamePayload) => {
+      handleEndGameEvent(data, setValue);
     };
 
     channel.bind("match-game", onTurnGame);
     channel.bind("condition-game", onConditionGame);
+    channel.bind("end-game", onEndGame); // ← tambah
 
     return () => {
       channel.unbind("match-game", onTurnGame);
       channel.unbind("condition-game", onConditionGame);
+      channel.unbind("end-game", onEndGame);
       pusherClientMatch.unsubscribe(channelName);
     };
   }, [params.id]);

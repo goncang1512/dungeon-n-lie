@@ -9,6 +9,7 @@ import { useShallow } from "zustand/shallow";
 import { authClient } from "@/src/lib/auth/client";
 import { useRouter } from "next/navigation";
 import CharacterSelect from "@/src/components/layouts/home-page/character-select";
+import { useEngine } from "@/src/store/game.store";
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function HomePage() {
@@ -16,6 +17,9 @@ export default function HomePage() {
   const { data } = authClient.useSession();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useDungeonScene(canvasRef);
+  const { reset } = useEngine(
+    useShallow((state) => ({ reset: state.resetEngine })),
+  );
   const {
     createRoom,
     creating,
@@ -48,6 +52,7 @@ export default function HomePage() {
 
   // ── Auto-start audio pada interaksi pertama apapun ──────────────────────
   useEffect(() => {
+    reset();
     audio.listenForFirstInteraction(() => {
       setValue("audioReady", true);
       audio.playAmbient();

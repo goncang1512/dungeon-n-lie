@@ -180,25 +180,23 @@ function TopBar(): JSX.Element {
 
 function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
   const params = useParams();
-  const { stage, matchPlayer, condition, winner } = useEngine(
+  const { stage, matchPlayer, condition, winner, setValue } = useEngine(
     useShallow((state) => ({
       stage: state.stage,
       matchPlayer: state.matchPlayer,
       condition: state.condition,
       winner: state.winner,
+      setValue: state.setValue,
     })),
   );
 
   const hasTriggeredRef = useRef(false);
 
   useEffect(() => {
-    // Game sudah selesai — jangan trigger apapun
     if (winner) return;
 
-    // Stage sudah ada — ini bukan intro, skip
     if (stage !== null) return;
 
-    // matchPlayer belum ter-hydrate dari server
     if (!matchPlayer.length) return;
 
     // Sudah pernah trigger — jangan double call
@@ -390,7 +388,13 @@ export function GameUI({
 }): JSX.Element {
   const { useParticipants } = useCallStateHooks();
   const participants = useParticipants();
-  const { state } = useEngine(useShallow((state) => ({ state: state.state })));
+  const { state, stage, winner } = useEngine(
+    useShallow((state) => ({
+      state: state.state,
+      stage: state.stage,
+      winner: state.winner,
+    })),
+  );
 
   const [glitch, setGlitch] = useState(false);
 
@@ -439,6 +443,12 @@ export function GameUI({
         />
       );
     });
+
+  const isNightPhase =
+    typeof stage === "string" &&
+    stage.startsWith("night") &&
+    role !== "infiltrator" &&
+    !winner;
 
   return (
     <div
@@ -494,6 +504,43 @@ export function GameUI({
             background: "rgba(217,119,6,0.35)",
           }}
         />
+      )}
+
+      {isNightPhase && (
+        <div
+          className="fixed inset-0 flex flex-col items-center justify-center gap-4"
+          style={{ background: "rgba(0,0,0,0.97)", zIndex: 50 }}
+        >
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#ef4444",
+              boxShadow: "0 0 16px rgba(239,68,68,0.9)",
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: 11,
+              color: "#57534e",
+              letterSpacing: "0.3em",
+            }}
+          >
+            INFILTRATOR SEDANG BERAKSI
+          </span>
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: 9,
+              color: "#292524",
+              letterSpacing: "0.2em",
+            }}
+          >
+            SEMUA KONEKSI DIPUTUS SEMENTARA
+          </span>
+        </div>
       )}
 
       {/* Endgame */}

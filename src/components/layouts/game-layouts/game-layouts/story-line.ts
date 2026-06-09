@@ -22,15 +22,11 @@ export const STORY_LINE = {
           success: {
             story:
               "Gerbang berhasil dibuka dan kelompok menemukan petunjuk menuju ruang berikutnya.",
-            effect: {
-              evidence: 2,
-            },
+            effect: { evidence: 2 },
           },
           failure: {
             story: "Suara benturan membangunkan makhluk dungeon.",
-            effect: {
-              chaos: 2,
-            },
+            effect: { chaos: 2 },
           },
         },
         {
@@ -40,16 +36,11 @@ export const STORY_LINE = {
           dc: 15,
           success: {
             story: "Rune kuno bereaksi dan membuka jalan rahasia.",
-            effect: {
-              evidence: 2,
-              survival: 1,
-            },
+            effect: { evidence: 2, survival: 1 },
           },
           failure: {
             story: "Rune melepaskan kutukan ringan.",
-            effect: {
-              chaos: 1,
-            },
+            effect: { chaos: 1 },
           },
         },
         {
@@ -60,15 +51,11 @@ export const STORY_LINE = {
           success: {
             story:
               "Gerbang terbuka, tetapi energi gelap mulai menyebar di dungeon.",
-            effect: {
-              chaos: 3,
-            },
+            effect: { chaos: 3 },
           },
           failure: {
             story: "Ritual gagal dan memperkuat kutukan.",
-            effect: {
-              chaos: 4,
-            },
+            effect: { chaos: 4 },
           },
         },
       ],
@@ -86,15 +73,11 @@ export const STORY_LINE = {
           dc: 13,
           success: {
             story: "Bisikan mengarahkan kelompok menuju ruangan tersembunyi.",
-            effect: {
-              evidence: 2,
-            },
+            effect: { evidence: 2 },
           },
           failure: {
             story: "Kelompok tersesat di lorong yang sama.",
-            effect: {
-              chaos: 1,
-            },
+            effect: { chaos: 1 },
           },
         },
         {
@@ -104,15 +87,11 @@ export const STORY_LINE = {
           dc: 12,
           success: {
             story: "Kelompok berhasil mempertahankan fokus.",
-            effect: {
-              survival: 1,
-            },
+            effect: { survival: 1 },
           },
           failure: {
             story: "Beberapa anggota mulai meragukan satu sama lain.",
-            effect: {
-              trust: -1,
-            },
+            effect: { trust: -1 },
           },
         },
         {
@@ -122,37 +101,34 @@ export const STORY_LINE = {
           dc: 10,
           success: {
             story: "Suara misterius memberikan jalan pintas.",
-            effect: {
-              chaos: 2,
-            },
+            effect: { chaos: 2 },
           },
           failure: {
             story: "Bisikan menanamkan kecurigaan dalam kelompok.",
-            effect: {
-              chaos: 3,
-            },
+            effect: { chaos: 3 },
           },
         },
       ],
     },
+
+    // ── NIGHT 1 — infiltrator beraksi ──────────────────────
+    {
+      id: "night_1",
+      type: "night_phase",
+      title: "Bayangan di Kegelapan",
+      story:
+        "Lampu padam. Sesuatu bergerak dalam kegelapan. Tidak ada yang tahu siapa — atau apa — yang mengintai.",
+    },
+
+    // ── DISCUSSION 1 — voting ──────────────────────────────
     {
       id: "discussion_1",
-      type: "night_phase",
-      story: "Kelompok beristirahat di perkemahan sementara di dalam dungeon.",
-      events: [
-        {
-          role: "Infiltrator",
-          action: "choose_kill_target",
-        },
-        {
-          role: "Guardian",
-          action: "choose_protection_target",
-        },
-        {
-          system: "resolve_attack",
-        },
-      ],
+      type: "discuss",
+      title: "Perkemahan Sementara",
+      story:
+        "Kelompok beristirahat sejenak. Ketegangan mulai memuncak. Seseorang harus disingkirkan sebelum perjalanan berlanjut.",
     },
+
     {
       id: "3",
       title: "The Forgotten Crypt",
@@ -167,15 +143,11 @@ export const STORY_LINE = {
           success: {
             story:
               "Kelompok menemukan catatan tentang pengkhianatan masa lalu.",
-            effect: {
-              evidence: 3,
-            },
+            effect: { evidence: 3 },
           },
           failure: {
             story: "Perangkap kuno aktif.",
-            effect: {
-              chaos: 2,
-            },
+            effect: { chaos: 2 },
           },
         },
         {
@@ -185,10 +157,7 @@ export const STORY_LINE = {
           dc: 12,
           success: {
             story: "Roh penjaga memberikan petunjuk.",
-            effect: {
-              evidence: 2,
-              trust: 1,
-            },
+            effect: { evidence: 2, trust: 1 },
           },
           failure: {
             story: "Tidak ada respons dari para roh.",
@@ -202,15 +171,11 @@ export const STORY_LINE = {
           dc: 11,
           success: {
             story: "Artefak misterius ditemukan.",
-            effect: {
-              chaos: 3,
-            },
+            effect: { chaos: 3 },
           },
           failure: {
             story: "Kutukan dilepaskan ke dungeon.",
-            effect: {
-              chaos: 4,
-            },
+            effect: { chaos: 4 },
           },
         },
       ],
@@ -228,9 +193,7 @@ export const STORY_LINE = {
           dc: 15,
           success: {
             story: "Kelompok menemukan sejarah asli dungeon.",
-            effect: {
-              evidence: 4,
-            },
+            effect: { evidence: 4 },
           },
           failure: {
             story: "Tulisan terlalu rusak untuk dibaca.",
@@ -244,15 +207,11 @@ export const STORY_LINE = {
           dc: 14,
           success: {
             story: "Ruangan tersembunyi ditemukan.",
-            effect: {
-              evidence: 3,
-            },
+            effect: { evidence: 3 },
           },
           failure: {
             story: "Kelompok membuang banyak waktu.",
-            effect: {
-              chaos: 1,
-            },
+            effect: { chaos: 1 },
           },
         },
         {
@@ -262,38 +221,34 @@ export const STORY_LINE = {
           dc: 10,
           success: {
             story: "Banyak rahasia dungeon hilang selamanya.",
-            effect: {
-              chaos: 3,
-            },
+            effect: { chaos: 3 },
           },
           failure: {
             story: "Api menyebar ke seluruh perpustakaan.",
-            effect: {
-              chaos: 4,
-            },
+            effect: { chaos: 4 },
           },
         },
       ],
     },
+
+    // ── NIGHT 2 — infiltrator beraksi ──────────────────────
+    {
+      id: "night_2",
+      type: "night_phase",
+      title: "Kegelapan Kembali",
+      story:
+        "Dungeon kembali menelan cahaya. Infiltrator merasakan kekuatannya semakin besar. Korban berikutnya sudah dipilih.",
+    },
+
+    // ── DISCUSSION 2 — voting ──────────────────────────────
     {
       id: "discussion_2",
-      type: "night_phase",
+      type: "discuss",
+      title: "Persimpangan Terakhir",
       story:
-        "Kelompok mulai saling mencurigai setelah berbagai kejadian aneh di dungeon.",
-      events: [
-        {
-          role: "Infiltrator",
-          action: "choose_kill_target",
-        },
-        {
-          role: "Guardian",
-          action: "choose_protection_target",
-        },
-        {
-          system: "resolve_attack",
-        },
-      ],
+        "Kelompok mulai saling mencurigai setelah berbagai kejadian aneh. Kepercayaan hampir habis. Ini mungkin kesempatan terakhir.",
     },
+
     {
       id: "5",
       title: "Heart Chamber",
@@ -307,15 +262,11 @@ export const STORY_LINE = {
           dc: 18,
           success: {
             story: "Kekuatan gelap mulai melemah.",
-            effect: {
-              evidence: 5,
-            },
+            effect: { evidence: 5 },
           },
           failure: {
             story: "Energi gelap melawan proses penyucian.",
-            effect: {
-              chaos: 2,
-            },
+            effect: { chaos: 2 },
           },
         },
         {
@@ -325,15 +276,11 @@ export const STORY_LINE = {
           dc: 16,
           success: {
             story: "Rahasia sebenarnya dari infiltrator mulai terungkap.",
-            effect: {
-              evidence: 4,
-            },
+            effect: { evidence: 4 },
           },
           failure: {
             story: "Artefak memancarkan ilusi.",
-            effect: {
-              chaos: 1,
-            },
+            effect: { chaos: 1 },
           },
         },
         {
@@ -343,15 +290,11 @@ export const STORY_LINE = {
           dc: 10,
           success: {
             story: "Kekuatan besar diperoleh, tetapi kutukan semakin kuat.",
-            effect: {
-              chaos: 5,
-            },
+            effect: { chaos: 5 },
           },
           failure: {
             story: "Artefak menyerang balik pemegangnya.",
-            effect: {
-              chaos: 3,
-            },
+            effect: { chaos: 3 },
           },
         },
       ],
