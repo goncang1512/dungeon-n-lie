@@ -180,13 +180,12 @@ function TopBar(): JSX.Element {
 
 function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
   const params = useParams();
-  const { stage, matchPlayer, condition, winner, setValue } = useEngine(
+  const { stage, matchPlayer, condition, winner } = useEngine(
     useShallow((state) => ({
       stage: state.stage,
       matchPlayer: state.matchPlayer,
       condition: state.condition,
       winner: state.winner,
-      setValue: state.setValue,
     })),
   );
 
@@ -205,8 +204,6 @@ function NarrativePanel({ glitch }: { glitch: boolean }): JSX.Element {
     // Ambil sessionGame fresh dari store
     const { sessionGame } = useEngine.getState();
 
-    // Hanya matchPlayer[0] yang trigger nextTurn
-    // matchPlayer diurutkan by created_at ASC dari server — konsisten di semua client
     if (sessionGame?.userId !== matchPlayer[0].userId) return;
 
     hasTriggeredRef.current = true;

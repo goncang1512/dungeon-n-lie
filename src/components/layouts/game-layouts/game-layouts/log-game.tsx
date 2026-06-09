@@ -297,15 +297,27 @@ export function SystemLogPanel(): JSX.Element {
     };
 
     const onEliminatedPlayer = (data: EngineType["voteResult"]) => {
+      const { matchPlayer: currentPlayers, sessionGame: currentSession } =
+        useEngine.getState();
+
       setValue("voteResult", data);
+
       setValue(
         "matchPlayer",
-        matchPlayers.map((p) =>
+        currentPlayers.map((p) =>
           p.userId === data.userId ? { ...p, status: "killed" } : p,
         ),
       );
+
+      if (data.userId === currentSession?.userId) {
+        setValue("sessionGame", {
+          ...currentSession,
+          status: "killed",
+        });
+      }
+
       muteParticipant(data.userId);
-      setShowEliminatedDialog(data.userId === sessionGame?.userId);
+      setShowEliminatedDialog(data.userId === currentSession?.userId);
     };
 
     channel.bind("vote-game", onVoteTarget);
