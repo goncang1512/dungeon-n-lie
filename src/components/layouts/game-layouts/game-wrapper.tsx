@@ -19,7 +19,6 @@ import {
 import { useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
 import { $Enums } from "@/generated/prisma/client";
-import { getNextAliveTurn } from "./game-layouts/story-line";
 
 export interface MatchPlayer {
   userId: string;
@@ -74,12 +73,6 @@ export function GameWrapper({
       handleTurnGame(data, setValue);
     // GameWrapper — onConditionGame
     const onConditionGame = (data: TurnConditionType) => {
-      const { turn: currentTurn, matchPlayer: currentPlayers } =
-        useEngine.getState();
-
-      const nextPlayer = getNextAliveTurn(currentTurn, currentPlayers);
-      if (!nextPlayer) return;
-
       handleTurnCondition(data, setValue);
     };
 

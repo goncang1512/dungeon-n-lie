@@ -206,9 +206,19 @@ export function SystemLogPanel(): JSX.Element {
 
           const { turn: freshTurn, lastTurn } = useEngine.getState();
           const anchorTurn = freshTurn || lastTurn;
-          const newTurn = getNextAliveTurn(anchorTurn, playersAfterElimination);
 
-          await nextTurn(nextStage, String(newTurn?.userId), String(params.id));
+          const isCurrentDiscuss = (stage as string)?.startsWith("discuss");
+
+          const newTurnUserId = isCurrentDiscuss
+            ? anchorTurn // freeze — jangan rotasi
+            : (getNextAliveTurn(anchorTurn, playersAfterElimination)?.userId ??
+              anchorTurn);
+
+          console.log(
+            `[TURN CLIENT] "${stage}" → "${nextStage}" | ${isCurrentDiscuss ? "FREEZE" : "rotasi"}: ${anchorTurn} → ${newTurnUserId}`,
+          );
+
+          await nextTurn(nextStage, String(newTurnUserId), String(params.id));
         }
 
         setValue("voteTarget", []);
