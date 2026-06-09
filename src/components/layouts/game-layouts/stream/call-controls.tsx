@@ -1,7 +1,7 @@
 import { useEngine } from "@/src/store/game.store";
 import { useCallStateHooks } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
-import { JSX } from "react";
+import { JSX, useEffect } from "react";
 import { useShallow } from "zustand/shallow";
 
 export function CallControls(): JSX.Element {
@@ -11,6 +11,14 @@ export function CallControls(): JSX.Element {
 
   const sessionGame = useEngine(useShallow((state) => state.sessionGame));
   const isKilled = sessionGame?.status === "killed";
+
+  // Matikan kamera dan mic otomatis saat player di-kill
+  useEffect(() => {
+    if (!isKilled) return;
+
+    if (!camMuted) camera.disable();
+    if (!micMuted) microphone.disable();
+  }, [isKilled]);
 
   return (
     <div className="flex gap-2">
