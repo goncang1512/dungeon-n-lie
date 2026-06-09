@@ -54,15 +54,15 @@ export default function HomePage() {
     });
   }, []);
 
-  console.log(data);
-
   return (
     <div
       className="relative w-full min-h-screen overflow-hidden select-none"
       style={{ background: "#0c0804" }}
     >
       {/* Three.js canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      {process.env.NEXT_PUBLIC_NODE_ENV === "production" && (
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      )}
 
       {/* Vignette */}
       <div

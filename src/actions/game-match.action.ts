@@ -93,26 +93,23 @@ export const nextTurn = async (
   });
 };
 
-// game-match.action.ts
 export const conditionStage = async (
   stage: string | null,
   success: boolean,
   room_id: string,
   choice: string,
 ) => {
-  // 1. Broadcast hasil roll ke semua client
   await pusher.trigger(`match-${room_id}`, "condition-game", {
     room_id,
     data: { stage, success, choice },
   });
 
-  // 2. Hitung next turn di server — satu sumber kebenaran, tidak race condition
   const match = await prisma.match.findFirst({
     where: { room_id },
     select: {
       turn: true,
       matchUsers: {
-        where: { status: "life" }, // hanya yang masih hidup
+        where: { status: "life" },
         select: { userId: true },
         orderBy: { created_at: "asc" },
       },
@@ -124,13 +121,30 @@ export const conditionStage = async (
   const alivePlayers = match.matchUsers;
   if (!alivePlayers.length) return;
 
-  const currentIndex = alivePlayers.findIndex((p) => p.userId === match.turn);
-  const nextIndex =
-    (currentIndex === -1 ? 0 : currentIndex + 1) % alivePlayers.length;
-  const nextUserId = alivePlayers[nextIndex].userId;
   const nextStage = getNextStage(String(stage));
+  const isCurrentDiscuss = String(stage).startsWith("discuss");
 
-  // 3. Tunggu 5 detik (sesuai delay di client), lalu advance
+  let nextUserId: string;
+
+  if (isCurrentDiscuss) {
+    // Keluar dari discuss → pakai turn yang sudah tersimpan di DB, jangan rotasi
+    nextUserId =
+      match.turn && match.turn.length > 0 ? match.turn : alivePlayers[0].userId;
+
+    console.log(`[TURN] discuss → stage | FREEZE turn tetap: ${nextUserId}`);
+  } else {
+    // Normal stage → rotasi ke player berikutnya
+    // (berlaku juga saat masuk ke discuss)
+    const currentIndex = alivePlayers.findIndex((p) => p.userId === match.turn);
+    const nextIndex =
+      (currentIndex === -1 ? 0 : currentIndex + 1) % alivePlayers.length;
+    nextUserId = alivePlayers[nextIndex].userId;
+
+    console.log(
+      `[TURN] stage "${stage}" → "${nextStage}" | rotasi: ${match.turn} (idx ${currentIndex}) → ${nextUserId} (idx ${nextIndex}) | alive: [${alivePlayers.map((p) => p.userId).join(", ")}]`,
+    );
+  }
+
   await new Promise((r) => setTimeout(r, 5000));
 
   await nextTurn(nextStage, nextUserId, room_id);

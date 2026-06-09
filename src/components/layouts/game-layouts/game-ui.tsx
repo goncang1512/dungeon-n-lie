@@ -445,7 +445,9 @@ export function GameUI({
       className="relative w-full h-screen overflow-hidden font-mono"
       style={{ background: "#080503" }}
     >
-      <DungeonBackground />
+      {process.env.NEXT_PUBLIC_NODE_ENV === "production" && (
+        <DungeonBackground />
+      )}
 
       {/* Visual overlay layers */}
       <div

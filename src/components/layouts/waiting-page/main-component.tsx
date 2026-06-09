@@ -76,7 +76,9 @@ export default function MainComponentWaiting({
       className="relative w-full min-h-screen overflow-hidden select-none"
       style={{ background: "#0c0804" }}
     >
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      {process.env.NEXT_PUBLIC_NODE_ENV === "production" && (
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      )}
 
       {/* Vignettes — edges darker so UI pops */}
       <Vignettes />
