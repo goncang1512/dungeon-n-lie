@@ -12,7 +12,6 @@ export function CallControls(): JSX.Element {
   const sessionGame = useEngine(useShallow((state) => state.sessionGame));
   const isKilled = sessionGame?.status === "killed";
 
-  // Matikan kamera dan mic otomatis saat player di-kill
   useEffect(() => {
     if (!isKilled) return;
 

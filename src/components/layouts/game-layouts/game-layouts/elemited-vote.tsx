@@ -4,6 +4,7 @@
 import { useEngine } from "@/src/store/game.store";
 import { JSX, useEffect, useState } from "react";
 import { useShallow } from "zustand/shallow";
+import { dungeonSound } from "./dungeon-sound";
 
 interface VoteEliminatedDialogProps {
   isVisible: boolean;
@@ -24,6 +25,7 @@ export function VoteEliminatedDialog({
     if (isVisible) {
       setVisible(true);
       setExiting(false);
+      dungeonSound.eliminated();
 
       // Auto-close setelah 5 detik
       const timer = setTimeout(() => {

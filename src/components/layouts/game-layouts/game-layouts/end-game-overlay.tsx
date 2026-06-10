@@ -3,6 +3,7 @@
 import { EndGameWinner } from "@/src/actions/game-match.action";
 import { JSX, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { dungeonSound } from "./dungeon-sound";
 
 interface EndGameOverlayProps {
   winner: EndGameWinner | null;
@@ -48,22 +49,26 @@ export function EndGameOverlay({
   const [visible, setVisible] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    if (winner) {
-      const t = setTimeout(() => setVisible(true), 800);
-      return () => clearTimeout(t);
-    }
-  }, [winner]);
-
-  if (!winner || !visible) return null;
-
-  const config = WINNER_CONFIG[winner];
-
   const isInfiltrator = myRole === "infiltrator";
   const playerWins =
     (winner === "infiltrator" && isInfiltrator) ||
     (winner === "innocent" && !isInfiltrator);
 
+  // ✅ Satu useEffect, sebelum early return
+  useEffect(() => {
+    if (!winner) return;
+    const t = setTimeout(() => {
+      setVisible(true);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      playerWins ? dungeonSound.win() : dungeonSound.lose();
+    }, 800);
+    return () => clearTimeout(t);
+  }, [winner, playerWins]);
+
+  // Early return boleh di sini, setelah semua hooks
+  if (!winner || !visible) return null;
+
+  const config = WINNER_CONFIG[winner];
   const personal = playerWins ? PERSONAL_MSG.win : PERSONAL_MSG.lose;
 
   return (
@@ -103,10 +108,18 @@ export function EndGameOverlay({
               bottom: pos.startsWith("b") ? 0 : "auto",
               left: pos.endsWith("l") ? 0 : "auto",
               right: pos.endsWith("r") ? 0 : "auto",
-              borderTop: pos.startsWith("t") ? `2px solid ${config.color}` : "none",
-              borderBottom: pos.startsWith("b") ? `2px solid ${config.color}` : "none",
-              borderLeft: pos.endsWith("l") ? `2px solid ${config.color}` : "none",
-              borderRight: pos.endsWith("r") ? `2px solid ${config.color}` : "none",
+              borderTop: pos.startsWith("t")
+                ? `2px solid ${config.color}`
+                : "none",
+              borderBottom: pos.startsWith("b")
+                ? `2px solid ${config.color}`
+                : "none",
+              borderLeft: pos.endsWith("l")
+                ? `2px solid ${config.color}`
+                : "none",
+              borderRight: pos.endsWith("r")
+                ? `2px solid ${config.color}`
+                : "none",
               opacity: 0.7,
             }}
           />
