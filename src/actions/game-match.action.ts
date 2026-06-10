@@ -98,6 +98,7 @@ export const conditionStage = async (
   success: boolean,
   room_id: string,
   choice: string,
+  eliminatedUserId?: string, // ← tambah ini
 ) => {
   await pusher.trigger(`match-${room_id}`, "condition-game", {
     room_id,
@@ -127,14 +128,20 @@ export const conditionStage = async (
 
   let nextUserId: string;
 
+  // Tentukan current turn — kalau yang sedang turn adalah yang dieliminasi,
+  // anggap currentTurn tidak ada (fallback ke index 0)
+  const effectiveTurn =
+    eliminatedUserId && match.turn === eliminatedUserId ? null : match.turn;
+
   if (isCurrentDiscuss || isCurrentNight) {
-    // Keluar dari discuss → pakai turn yang sudah tersimpan di DB, jangan rotasi
     nextUserId =
-      match.turn && match.turn.length > 0 ? match.turn : alivePlayers[0].userId;
+      effectiveTurn && effectiveTurn.length > 0
+        ? effectiveTurn
+        : alivePlayers[0].userId;
   } else {
-    // Normal stage → rotasi ke player berikutnya
-    // (berlaku juga saat masuk ke discuss)
-    const currentIndex = alivePlayers.findIndex((p) => p.userId === match.turn);
+    const currentIndex = alivePlayers.findIndex(
+      (p) => p.userId === effectiveTurn,
+    );
     const nextIndex =
       (currentIndex === -1 ? 0 : currentIndex + 1) % alivePlayers.length;
     nextUserId = alivePlayers[nextIndex].userId;

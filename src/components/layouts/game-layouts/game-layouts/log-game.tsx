@@ -41,6 +41,9 @@ function NightInfiltratorPanel({
   sessionGame: { userId: string } | null;
   params: { id: string };
 }) {
+  const { setValue } = useEngine(
+    useShallow((state) => ({ setValue: state.setValue })),
+  );
   return (
     <>
       <div
@@ -63,6 +66,7 @@ function NightInfiltratorPanel({
             key={player.userId}
             onClick={() =>
               startTransition(async () => {
+                setValue("killedId", player.userId);
                 await infiltratorKill(player.userId, String(params.id));
               })
             }
@@ -201,6 +205,7 @@ export function SystemLogPanel(): JSX.Element {
     voteTarget,
     winner,
     sessionGame,
+    killedId,
   } = useEngine(
     useShallow((state) => ({
       stage: state.stage,
@@ -211,6 +216,7 @@ export function SystemLogPanel(): JSX.Element {
       voteTarget: state.voteTarget,
       sessionGame: state.sessionGame,
       winner: state.winner,
+      killedId: state.killedId,
     })),
   );
 
@@ -268,6 +274,7 @@ export function SystemLogPanel(): JSX.Element {
             finalSuccess,
             String(params.id),
             String(pickCondition),
+            killedId,
           );
 
           await new Promise((r) => setTimeout(r, 5000));

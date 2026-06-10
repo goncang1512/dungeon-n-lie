@@ -31,6 +31,7 @@ export type EngineType = {
   winner: "infiltrator" | "innocent" | null;
   lastTurn: string | null;
   resetEngine: () => void;
+  killedId: string;
 };
 
 const initialState = {
@@ -55,6 +56,7 @@ const initialState = {
   sessionGame: null,
   lastTurn: null,
   winner: null,
+  killedId: "",
 };
 
 export const useEngine = create<EngineType>((set) => ({
