@@ -6,6 +6,7 @@ import CharacterSelect from "../home-page/character-select";
 import { $Enums } from "@/generated/prisma/client";
 import { useDungeonScene } from "@/src/hooks/useDungeonScene";
 import { Phase, ROLE_META, UserRole } from "./role-data";
+import { dungeonSound } from "../game-layouts/game-layouts/dungeon-sound";
 
 const ROLE_KEYS = Object.keys(ROLE_META) as UserRole[];
 
@@ -36,17 +37,22 @@ export default function RolePageClient({
 
   // ── Animasi rolling → reveal → done ─────────────────────────────────────
   useEffect(() => {
+    const stopRolling = dungeonSound.rolling();
+
     const cycleInterval = setInterval(() => {
       setCycleIdx((p) => (p + 1) % ROLE_KEYS.length);
     }, 80);
 
     const revealTimer = setTimeout(() => {
+      stopRolling();
       clearInterval(cycleInterval);
       setPhase("reveal");
+      dungeonSound.reveal();
       setTimeout(() => setPhase("done"), 900);
     }, 2400);
 
     return () => {
+      stopRolling();
       clearInterval(cycleInterval);
       clearTimeout(revealTimer);
     };

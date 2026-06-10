@@ -260,6 +260,107 @@ export function playEliminatedSound(): void {
 }
 
 /**
+ * playRollingSound — Role sedang di-roll
+ *
+ * Looping mechanical tick, makin cepat menjelang akhir.
+ * Return stopFn untuk menghentikan dari luar.
+ */
+export function playRollingSound(): () => void {
+  const ctx = getAudioContext();
+  let stopped = false;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let tickCount = 0;
+  const totalDuration = 2400; // ms, sama dengan revealTimer
+  const startTime = performance.now();
+
+  function scheduleTick() {
+    if (stopped) return;
+
+    const elapsed = performance.now() - startTime;
+    const progress = Math.min(elapsed / totalDuration, 1);
+
+    // Interval makin pendek: 180ms → 55ms
+    const interval = 180 - progress * 125;
+
+    // Pitch naik seiring waktu: 280Hz → 520Hz
+    const freq = 280 + progress * 240;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "square";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.05);
+
+    setTimeout(scheduleTick, interval);
+    tickCount++;
+  }
+
+  scheduleTick();
+  return () => {
+    stopped = true;
+  };
+}
+
+/**
+ * playRoleRevealSound — Role terungkap
+ *
+ * Dramatic sting: impact chord + shimmer tail.
+ * Dipanggil sekali saat phase berubah ke "reveal".
+ */
+export function playRoleRevealSound(): void {
+  const ctx = getAudioContext();
+  const now = ctx.currentTime;
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.45, now);
+  master.gain.linearRampToValueAtTime(0, now + 3.0);
+  master.connect(ctx.destination);
+
+  const reverb = createReverb(ctx, 2.5);
+  reverb.connect(master);
+
+  // Impact chord — tiga nada sekaligus (power chord + fifth)
+  const chord = [130.8, 196.0, 261.6]; // C3, G3, C4
+  chord.forEach((freq) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.3, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+    osc.connect(g);
+    g.connect(reverb);
+    g.connect(master);
+    osc.start(now);
+    osc.stop(now + 1.3);
+  });
+
+  // Shimmer — high freq sine yang muncul setelah impact
+  const shimmer = ctx.createOscillator();
+  shimmer.type = "sine";
+  shimmer.frequency.setValueAtTime(1046, now + 0.05); // C6
+  shimmer.frequency.linearRampToValueAtTime(1318, now + 0.4); // E6
+
+  const shimmerGain = ctx.createGain();
+  shimmerGain.gain.setValueAtTime(0, now);
+  shimmerGain.gain.linearRampToValueAtTime(0.2, now + 0.08);
+  shimmerGain.gain.linearRampToValueAtTime(0, now + 2.5);
+
+  shimmer.connect(shimmerGain);
+  shimmerGain.connect(reverb);
+  shimmer.start(now);
+  shimmer.stop(now + 2.6);
+}
+
+/**
  * API utama — gunakan ini di komponen
  *
  * @example
@@ -271,4 +372,6 @@ export const dungeonSound = {
   win: playVictorySound,
   lose: playDefeatSound,
   eliminated: playEliminatedSound,
+  rolling: playRollingSound, // returns stopFn
+  reveal: playRoleRevealSound,
 };
