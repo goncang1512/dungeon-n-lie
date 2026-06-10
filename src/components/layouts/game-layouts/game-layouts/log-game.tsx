@@ -410,6 +410,10 @@ export function SystemLogPanel(): JSX.Element {
     return "dice";
   }, [isNightStage, isDiscussStage, isInfiltrator]);
 
+  if (sessionGame?.status === "killed") {
+    return <></>;
+  }
+
   return (
     <>
       <div
