@@ -411,7 +411,18 @@ export function SystemLogPanel(): JSX.Element {
   }, [isNightStage, isDiscussStage, isInfiltrator]);
 
   if (sessionGame?.status === "killed") {
-    return <></>;
+    return (
+      <>
+        <EndGameOverlay
+          winner={winner ?? null}
+          myRole={sessionGame?.role ?? ""}
+        />
+        <VoteEliminatedDialog
+          isVisible={showEliminatedDialog}
+          onClose={() => setShowEliminatedDialog(false)}
+        />
+      </>
+    );
   }
 
   return (
