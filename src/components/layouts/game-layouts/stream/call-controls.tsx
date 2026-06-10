@@ -15,9 +15,27 @@ export function CallControls(): JSX.Element {
   useEffect(() => {
     if (!isKilled) return;
 
-    if (!camMuted) camera.disable();
-    if (!micMuted) microphone.disable();
-  }, [isKilled]);
+    // Paksa disable dengan retry — Stream SDK butuh waktu init setelah mount
+    const disable = async () => {
+      try {
+        await camera.disable();
+      } catch {}
+      try {
+        await microphone.disable();
+      } catch {}
+    };
+
+    // Jalankan segera
+    disable();
+
+    // Retry setelah 500ms — antisipasi SDK belum siap saat mount
+    const retry = setTimeout(disable, 500);
+
+    return () => clearTimeout(retry);
+
+    // Hapus camMuted/micMuted dari dependency — kita tidak ingin
+    // effect ini berhenti karena state mute sudah true
+  }, [isKilled, camera, microphone]);
 
   return (
     <div className="flex gap-2">
