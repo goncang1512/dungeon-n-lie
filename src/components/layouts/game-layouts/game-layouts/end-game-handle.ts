@@ -3,6 +3,7 @@ import {
   triggerEndGame,
 } from "@/src/actions/game-match.action";
 import { EngineType } from "@/src/store/game.store";
+import { STORY_LINE } from "./story-line";
 
 type Player = {
   userId: string;
@@ -10,7 +11,8 @@ type Player = {
   status: "life" | "killed";
 };
 
-const LAST_STAGE = "5";
+const LAST_STAGE =
+  [...STORY_LINE.stages].filter((s) => "choices" in s).at(-1)?.id ?? "20";
 
 export function checkEndGame(
   alivePlayers: Player[],
