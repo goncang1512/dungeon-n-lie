@@ -161,6 +161,8 @@ export const conditionStage = async (
     nextUserId = alivePlayers[nextIndex].userId;
   }
 
+  await new Promise((r) => setTimeout(r, 5000));
+
   await nextTurn(nextStage, nextUserId, room_id);
 };
 
