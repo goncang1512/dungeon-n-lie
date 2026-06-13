@@ -3,7 +3,6 @@ import {
   triggerEndGame,
 } from "@/src/actions/game-match.action";
 import { EngineType } from "@/src/store/game.store";
-import { STORY_LINE } from "./story-line";
 
 type Player = {
   userId: string;
@@ -11,25 +10,18 @@ type Player = {
   status: "life" | "killed";
 };
 
-const LAST_STAGE =
-  [...STORY_LINE.stages].filter((s) => "choices" in s).at(-1)?.id ?? "20";
-
-export function checkEndGame(
-  alivePlayers: Player[],
-  isLastStage: boolean,
-): EndGamePayload | null {
+export function checkEndGame(alivePlayers: Player[]): EndGamePayload | null {
   const infiltratorAlive = alivePlayers.some((p) => p.role === "infiltrator");
+  const innocentsAlive = alivePlayers.filter((p) => p.role !== "infiltrator");
 
+  // Infiltrator mati → innocent menang (priority tertinggi)
   if (!infiltratorAlive) {
     return { winner: "innocent", reason: "vote" };
   }
 
-  if (alivePlayers.length <= 1) {
+  // Tidak ada innocent tersisa → infiltrator menang
+  if (innocentsAlive.length === 0) {
     return { winner: "infiltrator", reason: "last_man" };
-  }
-
-  if (isLastStage && infiltratorAlive) {
-    return { winner: "infiltrator", reason: "last_stage" };
   }
 
   return null;
@@ -43,19 +35,17 @@ export function handleEndGameEvent(
 }
 
 // Dipanggil setelah voting selesai
+// isLastStage TIDAK dicek di sini — itu urusan server (conditionStage)
 export async function resolveEndGame(
   matchPlayers: Player[],
   eliminatedUserId: string | null,
-  currentStage: string,
   room_id: string,
 ): Promise<EndGamePayload | null> {
-  const isLastStage = currentStage === LAST_STAGE;
-
   const alivePlayers = matchPlayers.filter(
     (p) => p.status !== "killed" && p.userId !== eliminatedUserId,
   );
 
-  const endGamePayload = checkEndGame(alivePlayers, isLastStage);
+  const endGamePayload = checkEndGame(alivePlayers);
 
   if (endGamePayload) {
     await triggerEndGame(endGamePayload, room_id);

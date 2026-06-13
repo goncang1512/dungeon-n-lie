@@ -358,7 +358,6 @@ export function SystemLogPanel(): JSX.Element {
       const endGame = await resolveEndGame(
         matchPlayers,
         eliminatedPlayer?.userId ?? null,
-        String(stage),
         String(params.id),
       );
 
