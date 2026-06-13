@@ -61,25 +61,3 @@ export async function resolveEndGame(
 
   return endGamePayload;
 }
-
-// Dipanggil setelah roll dice selesai di stage terakhir
-// Tidak ada eliminasi — hanya cek apakah stage "5" dan infiltrator masih hidup
-export async function resolveEndGameAfterRoll(
-  matchPlayers: Player[],
-  currentStage: string,
-  room_id: string,
-): Promise<EndGamePayload | null> {
-  if (currentStage !== LAST_STAGE) return null;
-
-  const alivePlayers = matchPlayers.filter((p) => p.status !== "killed");
-  const infiltratorAlive = alivePlayers.some((p) => p.role === "infiltrator");
-
-  if (!infiltratorAlive) return null; // infiltrator sudah mati sebelumnya, innocent menang via vote
-
-  const payload: EndGamePayload = {
-    winner: "infiltrator",
-    reason: "last_stage",
-  };
-  await triggerEndGame(payload, room_id);
-  return payload;
-}

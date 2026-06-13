@@ -16,7 +16,7 @@ import {
 } from "react";
 import { getNextAliveTurn, getNextStage, STORY_LINE } from "./story-line";
 import { EngineType, useEngine } from "@/src/store/game.store";
-import { resolveEndGame, resolveEndGameAfterRoll } from "./end-game-handle";
+import { resolveEndGame } from "./end-game-handle";
 import { getMostVoted, useVoteElimination } from "./useVote";
 import {
   handleVoteTarget,
@@ -275,14 +275,6 @@ export function SystemLogPanel(): JSX.Element {
             String(params.id),
             String(pickCondition),
             killedId,
-          );
-
-          await new Promise((r) => setTimeout(r, 5000));
-
-          await resolveEndGameAfterRoll(
-            matchPlayers,
-            String(stage),
-            String(params.id),
           );
         });
       }

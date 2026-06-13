@@ -312,25 +312,6 @@ export const getNextStage = (currentStage: string) => {
   return STORY_LINE.stages[currentIndex + 1]?.id ?? null;
 };
 
-function extractStageNumber(stage: string): number {
-  const match = stage.match(/(\d+)$/);
-  return match ? parseInt(match[1], 10) : 0;
-}
-
-export function getPlayerTurn(
-  stage: string,
-  players: MatchPlayer[],
-): MatchPlayer | null {
-  // Discuss stage tidak ada turn
-  if (stage.startsWith("discuss")) return null;
-
-  const alivePlayers = players.filter((p) => p.status !== "killed");
-  if (!alivePlayers.length) return null;
-
-  const index = extractStageNumber(stage);
-  return alivePlayers[index % alivePlayers.length];
-}
-
 export function getNextAliveTurn(
   currentUserId: string | null,
   players: MatchPlayer[],

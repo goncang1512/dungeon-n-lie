@@ -111,7 +111,7 @@ export const conditionStage = async (
       turn: true,
       matchUsers: {
         where: { status: "life" },
-        select: { userId: true },
+        select: { userId: true, role: true },
         orderBy: { created_at: "asc" },
       },
     },
@@ -120,9 +120,23 @@ export const conditionStage = async (
   if (!match) return;
 
   const alivePlayers = match.matchUsers;
+
   if (!alivePlayers.length) return;
 
   const nextStage = getNextStage(String(stage));
+
+  if (nextStage === null) {
+    const infiltratorAlive = alivePlayers.some((p) => p.role === "infiltrator");
+    await triggerEndGame(
+      {
+        winner: infiltratorAlive ? "infiltrator" : "innocent",
+        reason: "last_stage",
+      },
+      room_id,
+    );
+    return;
+  }
+
   const isCurrentDiscuss = String(stage).startsWith("discuss");
   const isCurrentNight = String(stage).startsWith("night");
 
