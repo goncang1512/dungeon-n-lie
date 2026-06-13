@@ -15,12 +15,7 @@ import { DungeonBackground } from "@/src/components/layouts/game-layouts/backgro
 import { VideoTile } from "./stream/vidio-tile";
 import { CallControls } from "./stream/call-controls";
 
-import {
-  UserRole,
-  ROLE_META,
-  PHASE_LABELS,
-  PHASE_COLORS,
-} from "./game-layouts/init-game";
+import { UserRole, ROLE_META } from "./game-layouts/init-game";
 import { useEngine } from "@/src/store/game.store";
 import { useShallow } from "zustand/shallow";
 import { STORY_LINE } from "./game-layouts/story-line";
@@ -67,23 +62,46 @@ function EmptySlot({ slotIndex }: { slotIndex: number }): JSX.Element {
 }
 
 function TopBar(): JSX.Element {
-  const { state, myPlayer } = useGame();
-  const roleMeta = ROLE_META[myPlayer?.role ?? "survivor"];
+  const { state } = useGame();
+  const { sessionGame } = useEngine(
+    useShallow((state) => ({ sessionGame: state.sessionGame })),
+  );
+  const roleMeta = ROLE_META[sessionGame?.role ?? "survivor"];
   const urgency =
     state.timeLeft < 60
       ? "#f87171"
       : state.timeLeft < 120
         ? "#fbbf24"
         : "#e7e5e4";
-  const phaseColor = PHASE_COLORS[state.phase];
-
-  const { discuss } = useEngine(
-    useShallow((state) => ({ discuss: state.discuss })),
+  const { discuss, stage } = useEngine(
+    useShallow((state) => ({ discuss: state.discuss, stage: state.stage })),
   );
+
+  const stageInfo = STORY_LINE.stages.find((s) => s.id === stage);
+
+  // Format label yang human-readable — tidak tampilkan raw id
+  const stageLabel = useMemo(() => {
+    if (!stage) return "PREPARING...";
+    if (!stageInfo) return "—";
+    return stageInfo.title; // selalu pakai title dari STORY_LINE
+  }, [stage, stageInfo]);
+
+  // Badge kecil di atas title — tipe stage
+  const stageBadge = useMemo(() => {
+    if (!stage) return null;
+    if (stage.startsWith("night"))
+      return { label: "NIGHT PHASE", color: "#ef4444" };
+    if (stage.startsWith("discuss"))
+      return { label: "DISCUSSION", color: "#f59e0b" };
+    return {
+      label: `STAGE ${STORY_LINE.stages.filter((s) => "choices" in s).findIndex((s) => s.id === stage) + 1} / ${STORY_LINE.stages.filter((s) => "choices" in s).length}`,
+      color: "#57534e",
+    };
+  }, [stage]);
 
   return (
     <div
-      className="flex items-center justify-between px-4 py-5 border-b border-stone-800/60 shrink-0"
+      className="flex items-center justify-between px-4 py-4 border-b border-stone-800/60 shrink-0"
       style={{
         background: "rgba(4,3,2,0.90)",
         backdropFilter: "blur(12px)",
@@ -127,20 +145,55 @@ function TopBar(): JSX.Element {
         </span>
       </div>
 
-      {/* Center: timer */}
-      {discuss && (
-        <div className="flex-1 flex justify-center">
+      {/* Center: stage info + timer */}
+      <div className="flex flex-col items-center justify-center gap-0.5">
+        {/* Stage type badge */}
+        {stageBadge && (
           <span
-            className="text-[28px] font-bold tracking-widest"
-            style={{ fontFamily: "monospace", color: urgency }}
+            style={{
+              fontFamily: "monospace",
+              fontSize: 10,
+              fontWeight: 600,
+              color: stageBadge.color,
+              letterSpacing: "0.25em",
+            }}
+          >
+            {stageBadge.label}
+          </span>
+        )}
+
+        {/* Stage title */}
+        <span
+          className="text-center truncate max-w-55"
+          style={{
+            fontFamily: "monospace",
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#d6d3d1",
+            letterSpacing: "0.08em",
+          }}
+        >
+          {stageLabel}
+        </span>
+
+        {/* Timer — hanya saat discuss */}
+        {discuss && (
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: 20,
+              fontWeight: 700,
+              color: urgency,
+              lineHeight: 1,
+            }}
           >
             {fmt(state.timeLeft)}
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Right: round + phase */}
-      <div className="flex-1 flex justify-end items-center gap-2">
+      {/* <div className="flex-1 flex justify-end items-center gap-2">
         <span
           style={{
             fontFamily: "monospace",
@@ -174,7 +227,7 @@ function TopBar(): JSX.Element {
         >
           {PHASE_LABELS[state.phase]}
         </span>
-      </div>
+      </div> */}
     </div>
   );
 }
