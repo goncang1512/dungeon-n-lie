@@ -30,6 +30,7 @@ export interface MatchPlayer {
     | "catalyst";
   classId: DndClassId;
   status: $Enums.PlayerStatus;
+  hp: number;
 }
 
 // ── Props ─────────────────────────────────────────────────
@@ -75,15 +76,38 @@ export function GameWrapper({
     const onEndGame = (data: EndGamePayload) => {
       handleEndGameEvent(data, setValue);
     };
+    const onHpUpdate = (data: { userId: string; newHp: number }[]) => {
+      const { matchPlayer: current, sessionGame } = useEngine.getState();
+
+      setValue(
+        "matchPlayer",
+        current.map((p) => {
+          const updated = data.find((d) => d.userId === p.userId);
+          return updated ? { ...p, hp: updated.newHp } : p;
+        }),
+      );
+
+      if (sessionGame) {
+        const myUpdate = data.find((d) => d.userId === sessionGame.userId);
+        if (myUpdate) {
+          setValue("sessionGame", {
+            ...sessionGame,
+            hp: myUpdate.newHp,
+          });
+        }
+      }
+    };
 
     channel.bind("match-game", onTurnGame);
     channel.bind("condition-game", onConditionGame);
-    channel.bind("end-game", onEndGame); // ← tambah
+    channel.bind("end-game", onEndGame);
+    channel.bind("hp-update", onHpUpdate);
 
     return () => {
       channel.unbind("match-game", onTurnGame);
       channel.unbind("condition-game", onConditionGame);
       channel.unbind("end-game", onEndGame);
+      channel.unbind("hp-update", onHpUpdate);
       pusherClientMatch.unsubscribe(channelName);
     };
   }, [params.id]);

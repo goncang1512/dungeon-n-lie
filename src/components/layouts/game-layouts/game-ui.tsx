@@ -28,6 +28,7 @@ import { useParams } from "next/navigation";
 import { nextTurn } from "@/src/actions/game-match.action";
 import { SystemLogPanel } from "./game-layouts/log-game";
 import { useGame } from "./game-layouts/game-state";
+import HpPlayer from "./stream/hp-player";
 
 function fmt(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -324,58 +325,6 @@ function CenterPanel({ glitch }: { glitch: boolean }): JSX.Element {
   );
 }
 
-function EndgameOverlay(): JSX.Element {
-  const { state } = useEngine(useShallow((state) => ({ state: state.state })));
-  const heroWin = state === "hero";
-  const color = heroWin ? "#4ade80" : "#f87171";
-
-  return (
-    <>
-      <style>{`@keyframes endreveal{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}`}</style>
-      <div
-        className="fixed inset-0 flex items-center justify-center flex-col gap-5 text-center"
-        style={{ background: "rgba(0,0,0,0.94)", zIndex: 100 }}
-      >
-        <div
-          style={{
-            animation: "endreveal .6s ease-out forwards",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <div style={{ fontSize: 56, color }}>{heroWin ? "✓" : "✗"}</div>
-          <div
-            style={{
-              fontFamily: "monospace",
-              fontSize: 22,
-              fontWeight: "bold",
-              letterSpacing: "0.2em",
-              color,
-            }}
-          >
-            {heroWin ? "ANCAMAN DINETRALISIR" : "SEMUA SISTEM DIKOMPROMIKAN"}
-          </div>
-          <p
-            style={{
-              fontFamily: "monospace",
-              fontSize: 11,
-              color: "#57534e",
-              maxWidth: 320,
-              lineHeight: 1.7,
-            }}
-          >
-            {heroWin
-              ? "Infiltrator berhasil diidentifikasi. Tim selamat dari Ravenwood Station."
-              : "Infiltrator berhasil menggagalkan misi. Tidak ada yang keluar dari fasilitas ini."}
-          </p>
-        </div>
-      </div>
-    </>
-  );
-}
-
 export function GameUI({
   userId,
   role,
@@ -540,9 +489,6 @@ export function GameUI({
         </div>
       )}
 
-      {/* Endgame */}
-      {state === "endgame" && <EndgameOverlay />}
-
       {/* ── MAIN LAYOUT ── */}
       <div className="absolute inset-0 flex flex-col" style={{ zIndex: 2 }}>
         {/* 1. Top bar */}
@@ -581,6 +527,7 @@ export function GameUI({
           }}
         >
           <CallControls />
+          <HpPlayer />
           <div className="flex gap-1.5">
             {["»", "«"].map((s, i) => (
               <button

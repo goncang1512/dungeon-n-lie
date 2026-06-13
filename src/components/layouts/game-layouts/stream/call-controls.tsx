@@ -14,7 +14,6 @@ export function CallControls(): JSX.Element {
 
   useEffect(() => {
     if (!isKilled) return;
-
     const disable = async () => {
       try {
         await camera.disable();
@@ -23,16 +22,14 @@ export function CallControls(): JSX.Element {
         await microphone.disable();
       } catch {}
     };
-
     disable();
-
     const retry = setTimeout(disable, 500);
-
     return () => clearTimeout(retry);
   }, [isKilled, camera, microphone]);
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 items-center">
+      {/* Mic button — tidak berubah */}
       <button
         onClick={() => !isKilled && microphone.toggle()}
         disabled={isKilled}
@@ -46,7 +43,6 @@ export function CallControls(): JSX.Element {
         }}
       >
         {micMuted ? (
-          /* Mic off icon */
           <svg
             width="16"
             height="16"
@@ -64,7 +60,6 @@ export function CallControls(): JSX.Element {
             <line x1="8" y1="23" x2="16" y2="23" />
           </svg>
         ) : (
-          /* Mic on icon */
           <svg
             width="16"
             height="16"
@@ -89,7 +84,7 @@ export function CallControls(): JSX.Element {
         </span>
       </button>
 
-      {/* Camera button */}
+      {/* Camera button — tidak berubah */}
       <button
         onClick={() => !isKilled && camera.toggle()}
         disabled={isKilled}
@@ -109,7 +104,6 @@ export function CallControls(): JSX.Element {
         }}
       >
         {camMuted ? (
-          /* Camera off icon */
           <svg
             width="16"
             height="16"
@@ -125,7 +119,6 @@ export function CallControls(): JSX.Element {
             <line x1="1" y1="1" x2="23" y2="23" />
           </svg>
         ) : (
-          /* Camera on icon */
           <svg
             width="16"
             height="16"

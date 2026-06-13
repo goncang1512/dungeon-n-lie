@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@/generated/prisma/client";
 import { pusher } from "@/src/lib/pusher/pusher";
+import { getBaseHp } from "@/src/components/layouts/game-layouts/game-layouts/utils-game";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -60,7 +61,6 @@ async function distributeRoles(
   matchId: string,
   userId: string,
 ): Promise<{ role: UserRole }> {
-  // Cek cepat apakah sudah pernah di-assign
   const match = await prisma.match.findUnique({
     where: { id: matchId },
     select: { roleAssigned: true },
@@ -122,7 +122,15 @@ async function distributeRoles(
   const matchUsers = await prisma.matchUser.findMany({
     where: { matchId },
     orderBy: { created_at: "asc" },
-    select: { id: true, userId: true },
+    select: {
+      id: true,
+      userId: true,
+      user: {
+        select: {
+          character: true,
+        },
+      },
+    },
   });
 
   const playerCount = matchUsers.length;
@@ -140,7 +148,10 @@ async function distributeRoles(
       if (mu.userId === userId) myRole = shuffled[i];
       return prisma.matchUser.update({
         where: { userId_matchId: { userId: mu.userId, matchId } },
-        data: { role: shuffled[i] },
+        data: {
+          role: shuffled[i],
+          hp: getBaseHp(mu.user.character ?? "barbarian"),
+        },
       });
     }),
   );

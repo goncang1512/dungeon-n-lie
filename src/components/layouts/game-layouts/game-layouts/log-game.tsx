@@ -29,6 +29,7 @@ import { useParams } from "next/navigation";
 import { MatchPlayer } from "../game-wrapper";
 import { EndGameOverlay } from "./end-game-overlay";
 import { VoteEliminatedDialog } from "./elemited-vote";
+import DiceRoll from "./dice-roll";
 
 // ── Sub-components ─────────────────────────────────────────
 
@@ -639,80 +640,17 @@ export function SystemLogPanel(): JSX.Element {
           </Activity>
 
           <Activity mode={activePanel === "dice" ? "visible" : "hidden"}>
-            <div className="flex flex-col items-center gap-4">
-              <div
-                className={`w-24 h-24 rounded-xl border flex items-center justify-center transition-all duration-150 ${rolling ? "scale-110 rotate-6" : ""}`}
-                style={{
-                  borderColor: "#f59e0b",
-                  background: "rgba(0,0,0,.45)",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 40,
-                    fontWeight: 700,
-                    color: "#fbbf24",
-                    fontFamily: "monospace",
-                  }}
-                >
-                  {diceValue ?? "D20"}
-                </span>
-              </div>
-              <div className="text-center space-y-1">
-                <div
-                  style={{
-                    color: "#a8a29e",
-                    fontSize: 11,
-                    letterSpacing: "0.1em",
-                    fontFamily: "monospace",
-                  }}
-                >
-                  {selectedChoice?.label ?? "SELECT ACTION"}
-                </div>
-                <div
-                  style={{
-                    color: "#f59e0b",
-                    fontSize: 24,
-                    fontWeight: 700,
-                    fontFamily: "monospace",
-                  }}
-                >
-                  NEED {selectedNeed}+
-                </div>
-                {selectedChoice && (
-                  <div
-                    style={{
-                      color: "#78716c",
-                      fontSize: 12,
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    {selectedChoice.required_stat} {selectedStat}
-                  </div>
-                )}
-                <div
-                  style={{
-                    color:
-                      diceValue == null
-                        ? "#f5f5f4"
-                        : success
-                          ? "#22c55e"
-                          : "#ef4444",
-                    fontSize: 18,
-                    fontWeight: 700,
-                  }}
-                >
-                  {diceValue == null ? "READY" : success ? "SUCCESS" : "FAILED"}
-                </div>
-              </div>
-              <button
-                onClick={handleRoll}
-                disabled={rolling || !selectedChoice || data?.user.id !== turn}
-                className="px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {rolling ? "ROLLING..." : "ROLL D20"}
-              </button>
-            </div>
+            <DiceRoll
+              data={data}
+              diceValue={diceValue}
+              handleRoll={handleRoll}
+              rolling={rolling}
+              selectedChoice={selectedChoice}
+              selectedNeed={selectedNeed}
+              selectedStat={selectedStat}
+              success={success}
+              turn={turn}
+            />
           </Activity>
         </div>
       </div>

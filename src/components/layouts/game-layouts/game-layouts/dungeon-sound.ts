@@ -360,6 +360,72 @@ export function playRoleRevealSound(): void {
   shimmer.stop(now + 2.6);
 }
 
+export const diceRollSound = () => {
+  const ctx = getAudioContext();
+
+  // Tick sound — diulang 12x seperti interval rolling
+  const playTick = (time: number, pitch: number) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(pitch, time);
+    osc.frequency.exponentialRampToValueAtTime(pitch * 0.5, time + 0.04);
+
+    gain.gain.setValueAtTime(0.15, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+
+    osc.start(time);
+    osc.stop(time + 0.07);
+  };
+
+  // Final clunk — bunyi berat saat dice berhenti
+  const playFinal = (time: number) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const noise = ctx.createOscillator();
+    const noiseGain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    noise.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(120, time);
+    osc.frequency.exponentialRampToValueAtTime(40, time + 0.3);
+    gain.gain.setValueAtTime(0.3, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
+    osc.start(time);
+    osc.stop(time + 0.35);
+
+    noise.type = "square";
+    noise.frequency.setValueAtTime(80, time);
+    noise.frequency.exponentialRampToValueAtTime(20, time + 0.2);
+    noiseGain.gain.setValueAtTime(0.1, time);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+    noise.start(time);
+    noise.stop(time + 0.25);
+  };
+
+  const now = ctx.currentTime;
+  const tickCount = 12;
+  const interval = 0.08; // sama dengan interval 80ms di handleRoll
+
+  // Pitch makin tinggi saat rolling makin cepat (simulasi dadu berputar)
+  for (let i = 0; i < tickCount; i++) {
+    const progress = i / tickCount;
+    const pitch = 200 + progress * 400; // 200hz → 600hz
+    playTick(now + i * interval, pitch);
+  }
+
+  // Final clunk setelah tick terakhir
+  playFinal(now + tickCount * interval + 0.05);
+};
+
 /**
  * API utama — gunakan ini di komponen
  *
@@ -374,4 +440,5 @@ export const dungeonSound = {
   eliminated: playEliminatedSound,
   rolling: playRollingSound, // returns stopFn
   reveal: playRoleRevealSound,
+  diceRoll: diceRollSound,
 };

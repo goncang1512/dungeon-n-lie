@@ -13,7 +13,11 @@ import { prisma } from "@/src/lib/prisma";
 import { MatchPlayer } from "../components/layouts/game-layouts/game-wrapper";
 import { pusher } from "../lib/pusher/pusher";
 import { EngineType } from "../store/game.store";
-import { getNextStage } from "../components/layouts/game-layouts/game-layouts/story-line";
+import {
+  getNextStage,
+  STORY_LINE,
+} from "../components/layouts/game-layouts/game-layouts/story-line";
+import { calculateDamage } from "../components/layouts/game-layouts/game-layouts/utils-game";
 
 // ── Return type ───────────────────────────────────────────
 
@@ -59,6 +63,7 @@ export async function getMatchPlayers(
       displayName: mu.user.username,
       role: mu.role as MatchPlayer["role"],
       classId: mu.user.character as MatchPlayer["classId"],
+      hp: mu.hp,
     }));
 
     return { ok: true, players };
@@ -98,20 +103,28 @@ export const conditionStage = async (
   success: boolean,
   room_id: string,
   choice: string,
-  eliminatedUserId?: string, // ← tambah ini
+  eliminatedUserId?: string,
 ) => {
+  // 1. Broadcast hasil roll dulu
   await pusher.trigger(`match-${room_id}`, "condition-game", {
     room_id,
     data: { stage, success, choice },
   });
 
+  // 2. Query semua data sekaligus
   const match = await prisma.match.findFirst({
     where: { room_id },
     select: {
       turn: true,
       matchUsers: {
         where: { status: "life" },
-        select: { userId: true, role: true },
+        select: {
+          id: true,
+          userId: true,
+          hp: true,
+          role: true,
+          user: { select: { character: true } },
+        },
         orderBy: { created_at: "asc" },
       },
     },
@@ -119,14 +132,113 @@ export const conditionStage = async (
 
   if (!match) return;
 
-  const alivePlayers = match.matchUsers;
-
+  let alivePlayers = match.matchUsers;
   if (!alivePlayers.length) return;
 
+  // 3. Proses HP damage kalau failure
+  if (!success) {
+    const stageData = STORY_LINE.stages.find((s) => s.id === stage);
+    const choiceData = stageData?.choices?.find((c) => c.id === choice);
+    const dc = choiceData?.dc ?? 10;
+    const requiredStat = choiceData?.required_stat ?? "STR";
+
+    const hpUpdates: { userId: string; newHp: number }[] = [];
+    const eliminatedFromHp: string[] = [];
+
+    for (const player of alivePlayers) {
+      if (player.userId === match.turn) continue;
+
+      const damage = calculateDamage(dc, requiredStat, player.user.character);
+      const newHp = Math.max(0, player.hp - damage);
+
+      console.log("Damage", { damage, newHp });
+
+      await prisma.matchUser.update({
+        where: { id: player.id },
+        data: { hp: newHp },
+      });
+
+      hpUpdates.push({ userId: player.userId, newHp });
+
+      if (newHp <= 0) {
+        eliminatedFromHp.push(player.userId);
+      }
+    }
+
+    // Broadcast HP update
+    await pusher.trigger(`match-${room_id}`, "hp-update", hpUpdates);
+
+    // Eliminasi player HP habis
+    for (const userId of eliminatedFromHp) {
+      const target = await prisma.matchUser.findFirst({
+        where: { userId, match: { room_id } },
+        select: {
+          role: true,
+          user: { select: { username: true, character: true } },
+        },
+      });
+
+      await prisma.matchUser.updateMany({
+        where: { userId, match: { room_id } },
+        data: { status: "killed" },
+      });
+
+      await pusher.trigger(`match-${room_id}`, "eliminated-vote", {
+        userId,
+        role: target?.role ?? "",
+        name: target?.user.username ?? "",
+        character: target?.user.character ?? "",
+      });
+    }
+
+    // 4. End game check — LANGSUNG tanpa delay kalau ada yang mati
+    if (eliminatedFromHp.length > 0) {
+      const updatedMatch = await prisma.match.findFirst({
+        where: { room_id },
+        select: {
+          matchUsers: {
+            where: { status: "life" },
+            select: { userId: true, role: true },
+          },
+        },
+      });
+
+      const updatedAlive = updatedMatch?.matchUsers ?? [];
+      const infiltratorStillAlive = updatedAlive.some(
+        (p) => p.role === "infiltrator",
+      );
+      const innocentsStillAlive = updatedAlive.some(
+        (p) => p.role !== "infiltrator",
+      );
+
+      // ← tidak ada delay di sini, langsung trigger
+      if (!infiltratorStillAlive) {
+        await triggerEndGame(
+          { winner: "innocent", reason: "last_man" },
+          room_id,
+        );
+        return;
+      }
+
+      if (!innocentsStillAlive) {
+        await triggerEndGame(
+          { winner: "infiltrator", reason: "last_man" },
+          room_id,
+        );
+        return;
+      }
+
+      alivePlayers = updatedAlive as typeof alivePlayers;
+    }
+  }
+
+  // 5. Cek next stage
   const nextStage = getNextStage(String(stage));
 
   if (nextStage === null) {
     const infiltratorAlive = alivePlayers.some((p) => p.role === "infiltrator");
+    // Delay hanya di sini — biar client sempat lihat SUCCESS/FAILED dulu
+    await new Promise((r) => setTimeout(r, 5000));
     await triggerEndGame(
       {
         winner: infiltratorAlive ? "infiltrator" : "innocent",
@@ -137,21 +249,17 @@ export const conditionStage = async (
     return;
   }
 
+  // 6. Hitung next turn
   const isCurrentDiscuss = String(stage).startsWith("discuss");
   const isCurrentNight = String(stage).startsWith("night");
 
-  let nextUserId: string;
-
-  // Tentukan current turn — kalau yang sedang turn adalah yang dieliminasi,
-  // anggap currentTurn tidak ada (fallback ke index 0)
   const effectiveTurn =
     eliminatedUserId && match.turn === eliminatedUserId ? null : match.turn;
 
+  let nextUserId: string;
+
   if (isCurrentDiscuss || isCurrentNight) {
-    nextUserId =
-      effectiveTurn && effectiveTurn.length > 0
-        ? effectiveTurn
-        : alivePlayers[0].userId;
+    nextUserId = effectiveTurn ?? alivePlayers[0].userId;
   } else {
     const currentIndex = alivePlayers.findIndex(
       (p) => p.userId === effectiveTurn,
@@ -161,8 +269,8 @@ export const conditionStage = async (
     nextUserId = alivePlayers[nextIndex].userId;
   }
 
+  // 7. Delay 5 detik hanya untuk ganti stage — biar client lihat SUCCESS/FAILED
   await new Promise((r) => setTimeout(r, 5000));
-
   await nextTurn(nextStage, nextUserId, room_id);
 };
 

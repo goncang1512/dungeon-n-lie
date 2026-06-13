@@ -101,6 +101,7 @@ export default async function GamePageServer({
       userId: true,
       role: true,
       status: true,
+      hp: true,
       user: {
         select: {
           username: true,
@@ -117,6 +118,7 @@ export default async function GamePageServer({
     status: mu.status,
     role: mu.role as MatchPlayer["role"],
     classId: mu.user.character as MatchPlayer["classId"],
+    hp: mu.hp,
   }));
 
   // ── 3. Generate Stream token ──────────────────────────
